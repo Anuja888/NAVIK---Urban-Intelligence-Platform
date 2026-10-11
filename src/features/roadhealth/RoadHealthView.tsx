@@ -1,0 +1,242 @@
+import { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { Activity, Cloud, Navigation, HardHat, AlertTriangle, Clock } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { useNavikStore } from '../../store/navikStore';
+import type { RoadHealthSegment } from '../../types';
+
+function rhiColor(rhi: number): string {
+  if (rhi >= 70) return 'var(--ok)';
+  if (rhi >= 50) return 'var(--warn)';
+  if (rhi >= 30) return '#ff8c42';
+  return 'var(--danger)';
+}
+
+function rhiLabel(rhi: number): string {
+  if (rhi >= 70) return 'Good';
+  if (rhi >= 50) return 'Fair';
+  if (rhi >= 30) return 'Poor';
+  return 'Critical';
+}
+
+const TOOLTIP_STYLE = {
+  contentStyle: { background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, fontFamily: 'IBM Plex Sans' },
+  labelStyle:   { color: 'var(--text-2)', fontSize: 11 },
+  cursor:       { fill: 'rgba(61,213,243,0.05)' },
+};
+
+export function RoadHealthView() {
+  const segments      = useNavikStore((s) => s.roadHealthSegments);
+  const buses         = useNavikStore((s) => s.buses);
+  const applyReroute  = useNavikStore((s) => s.applyRerouteSuggestion);
+  const prePosition   = useNavikStore((s) => s.prePositionCrew);
+  const addToast      = useNavikStore((s) => s.addToast);
+  const [monsoonMM, setMonsoonMM] = useState(40);
+  const [sortBy, setSortBy]       = useState<'rhi' | 'failure' | 'coverage'>('rhi');
+
+  // Recompute failure probability with monsoon slider
+  const computedSegments = useMemo<RoadHealthSegment[]>(() => {
+    return segments.map((seg) => {
+      const monsoonFactor = Math.min(1, monsoonMM / 100);
+      const adjustedProb  = Math.min(0.98, seg.failureProbability30d + monsoonFactor * 0.2);
+      const predictedCount = Math.round(adjustedProb * seg.defectDensity * 3);
+      return { ...seg, failureProbability30d: adjustedProb, predictedPotholeCount: predictedCount };
+    });
+  }, [segments, monsoonMM]);
+
+  const sorted = [...computedSegments].sort((a, b) =>
+    sortBy === 'rhi'      ? a.rhi - b.rhi :
+    sortBy === 'failure'  ? b.failureProbability30d - a.failureProbability30d :
+                            b.hoursSinceLastScan - a.hoursSinceLastScan
+  );
+
+  const criticalCount  = sorted.filter((s) => s.rhi < 30).length;
+  const unscanCount    = sorted.filter((s) => s.coverageFreshness === 'critical').length;
+  const highRiskCount  = sorted.filter((s) => s.failureProbability30d > 0.6).length;
+  const avgRHI         = Math.round(sorted.reduce((s, n) => s + n.rhi, 0) / Math.max(sorted.length, 1));
+
+  // Chart data: RHI per segment
+  const chartData = sorted.map((s) => ({ name: s.name.split('–')[0].trim(), rhi: s.rhi, prob: Math.round(s.failureProbability30d * 100) }));
+
+  function freshnessColor(f: RoadHealthSegment['coverageFreshness']) {
+    return f === 'fresh' ? 'var(--ok)' : f === 'stale' ? 'var(--warn)' : 'var(--danger)';
+  }
+
+  function suggestBus(seg: RoadHealthSegment) {
+    const near = buses.find((b) => b.status === 'active');
+    return near?.id;
+  }
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg)' }}>
+      {/* Header */}
+      <div style={{ flexShrink: 0, padding: '12px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <Activity size={16} color="var(--accent)" />
+        <h2 style={{ fontSize: '0.9375rem', marginRight: 'auto' }}>Road Health Intelligence</h2>
+        {[
+          { label: 'Avg RHI',        value: `${avgRHI}/100`,     color: rhiColor(avgRHI) },
+          { label: 'Critical Segs',  value: criticalCount,        color: criticalCount > 0 ? 'var(--danger)' : 'var(--ok)' },
+          { label: 'Unscanned >6h',  value: unscanCount,          color: unscanCount > 0 ? 'var(--warn)' : 'var(--ok)' },
+          { label: 'High Risk 30d',  value: highRiskCount,         color: highRiskCount > 0 ? 'var(--danger)' : 'var(--ok)' },
+        ].map(({ label, value, color }) => (
+          <div key={label} style={{ textAlign: 'center' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.125rem', color }}>{value}</div>
+            <div style={{ fontSize: '0.5625rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        {/* Left: controls + chart */}
+        <div style={{ width: 340, flexShrink: 0, borderRight: '1px solid var(--border)', overflow: 'auto', padding: '16px' }}>
+          {/* Monsoon slider */}
+          <div className="panel" style={{ marginBottom: 16 }}>
+            <div className="panel-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <Cloud size={13} color="var(--info)" />
+                <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>Monsoon Intensity</span>
+              </div>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8125rem', fontWeight: 700, color: 'var(--info)' }}>{monsoonMM}mm</span>
+            </div>
+            <div style={{ padding: '14px' }}>
+              <input type="range" min={0} max={150} value={monsoonMM} onChange={(e) => setMonsoonMM(Number(e.target.value))}
+                style={{ width: '100%', accentColor: 'var(--info)', cursor: 'pointer', marginBottom: 8 }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                {[0, 50, 100, 150].map((v) => (
+                  <span key={v} style={{ fontSize: '0.5625rem', color: 'var(--text-muted)' }}>{v}mm</span>
+                ))}
+              </div>
+              <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: 8 }}>
+                Adjusting monsoon intensity recalculates 30-day failure probability and predicted pothole count for all segments.
+              </div>
+            </div>
+          </div>
+
+          {/* RHI Bar chart */}
+          <div className="panel">
+            <div className="panel-header">
+              <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>Road Health Index (RHI)</span>
+            </div>
+            <div style={{ padding: '8px 0' }}>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={chartData} layout="vertical" barSize={12}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" horizontal={false} />
+                  <XAxis type="number" domain={[0, 100]} tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis dataKey="name" type="category" tick={{ fill: 'var(--text-2)', fontSize: 9 }} width={80} axisLine={false} tickLine={false} />
+                  <Tooltip {...TOOLTIP_STYLE} formatter={(v: number) => [`${v}/100`, 'RHI']} />
+                  <Bar dataKey="rhi" radius={[0, 4, 4, 0]}>
+                    {chartData.map((entry, i) => (
+                      <Cell key={i} fill={rhiColor(entry.rhi)} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: segment table */}
+        <div style={{ flex: 1, overflow: 'auto', padding: '16px 20px' }}>
+          {/* Sort bar */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Sort by:</span>
+            {[
+              { key: 'rhi',      label: 'RHI (worst first)' },
+              { key: 'failure',  label: '30d Failure Risk' },
+              { key: 'coverage', label: 'Coverage Freshness' },
+            ].map(({ key, label }) => (
+              <button key={key} onClick={() => setSortBy(key as typeof sortBy)}
+                className={sortBy === key ? 'btn btn-primary btn-xs' : 'btn btn-secondary btn-xs'}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Segments */}
+          {sorted.map((seg, i) => {
+            const rc     = rhiColor(seg.rhi);
+            const fc     = freshnessColor(seg.coverageFreshness);
+            const sugBus = suggestBus(seg);
+            return (
+              <motion.div key={seg.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+                style={{ background: 'var(--surface)', border: `1px solid ${seg.rhi < 30 ? 'rgba(255,92,92,0.3)' : 'var(--border)'}`, borderRadius: 12, padding: '14px 16px', marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, gap: 12, flexWrap: 'wrap' }}>
+                  <div>
+                    <h4 style={{ fontSize: '0.9375rem', color: 'var(--text)', marginBottom: 2 }}>{seg.name}</h4>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.6875rem', color: rc, fontWeight: 700, background: `${rc}12`, padding: '1px 7px', borderRadius: 999, border: `1px solid ${rc}25`, fontFamily: 'var(--font-mono)' }}>
+                        RHI {seg.rhi} · {rhiLabel(seg.rhi)}
+                      </span>
+                      <span style={{ fontSize: '0.6875rem', color: fc, fontWeight: 600, background: `${fc}12`, padding: '1px 7px', borderRadius: 999, border: `1px solid ${fc}25` }}>
+                        <Clock size={9} style={{ verticalAlign: 'middle', marginRight: 3 } as React.CSSProperties} />
+                        {seg.coverageFreshness === 'fresh' ? `<2h ago` : seg.coverageFreshness === 'stale' ? `${seg.hoursSinceLastScan.toFixed(1)}h ago` : `>${seg.hoursSinceLastScan.toFixed(0)}h`}
+                      </span>
+                      {seg.prePositionCrewRecommended && (
+                        <span style={{ fontSize: '0.6875rem', color: 'var(--danger)', background: 'var(--danger-subtle)', padding: '1px 7px', borderRadius: 999, border: '1px solid rgba(255,92,92,0.25)', fontWeight: 700 }}>
+                          ⚠ Pre-position recommended
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {/* RHI bar */}
+                  <div style={{ minWidth: 120, textAlign: 'right' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end', marginBottom: 4 }}>
+                      <div style={{ width: 80, height: 6, background: 'var(--surface-2)', borderRadius: 999 }}>
+                        <div style={{ height: '100%', width: `${seg.rhi}%`, background: rc, borderRadius: 999, transition: 'width 0.5s' }} />
+                      </div>
+                    </div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.625rem', color: 'var(--text-muted)' }}>
+                      30d fail: <span style={{ color: seg.failureProbability30d > 0.6 ? 'var(--danger)' : 'var(--warn)', fontWeight: 700 }}>
+                        {Math.round(seg.failureProbability30d * 100)}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Metrics grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 12 }}>
+                  {[
+                    { label: 'Defect/km', value: `${seg.defectDensity}`, color: 'var(--text-2)' },
+                    { label: 'Age',       value: `${seg.ageYears}y`,     color: 'var(--text-2)' },
+                    { label: 'Load',      value: seg.trafficLoad,         color: seg.trafficLoad === 'high' ? 'var(--danger)' : seg.trafficLoad === 'medium' ? 'var(--warn)' : 'var(--ok)' },
+                    { label: 'Rain exp.', value: `${seg.rainExposure}/10`, color: 'var(--info)' },
+                    { label: 'Pred. new', value: `${seg.predictedPotholeCount} holes`, color: seg.predictedPotholeCount > 2 ? 'var(--danger)' : 'var(--warn)' },
+                  ].map(({ label, value, color }) => (
+                    <div key={label} style={{ background: 'var(--surface-2)', borderRadius: 7, padding: '7px 8px', textAlign: 'center' }}>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', fontWeight: 700, color }}>{value}</div>
+                      <div style={{ fontSize: '0.5rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: 1 }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {seg.coverageFreshness !== 'fresh' && sugBus && (
+                    <button className="btn btn-secondary btn-sm" onClick={() => {
+                      applyReroute(seg.id);
+                      addToast({ type:'success', title:'Reroute Applied', message:`${sugBus} nudged to cover ${seg.name}` });
+                    }}>
+                      <Navigation size={12} />
+                      Suggest Reroute ({sugBus})
+                    </button>
+                  )}
+                  {seg.prePositionCrewRecommended && (
+                    <button className="btn btn-warning btn-sm" onClick={() => prePosition(seg.id)}>
+                      <HardHat size={12} /> Pre-position Crew
+                    </button>
+                  )}
+                  {seg.failureProbability30d > 0.5 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.75rem', color: 'var(--danger)' }}>
+                      <AlertTriangle size={12} />
+                      High failure risk — consider preventive patching
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
