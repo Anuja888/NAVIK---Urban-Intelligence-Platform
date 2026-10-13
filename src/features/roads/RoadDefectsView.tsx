@@ -17,7 +17,7 @@ function CategoryIcon({ category }: { category: DefectCategory }) {
     pothole: '🕳️', waterlogging: '💧', missing_signboard: '🚫',
     missing_divider: '🛣️', missing_zebra_crossing: '🦓', damaged_road: '⚠️',
   };
-  return <span style={{ fontSize: '1.125rem' }}>{emoji[category]}</span>;
+  return <span style={{ fontSize: 18 }}>{emoji[category]}</span>;
 }
 
 export function RoadDefectsView() {
@@ -50,8 +50,8 @@ export function RoadDefectsView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
-        <h1 style={{ fontSize: '1.25rem', marginBottom: 2 }}>Road Condition & Infrastructure</h1>
-        <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+        <h1 style={{ fontSize: 20, marginBottom: 2 }}>Road Condition & Infrastructure</h1>
+        <p style={{ fontSize: 13, color: 'var(--muted)' }}>
           {defects.length} defects detected · {defects.filter(d => d.status !== 'resolved').length} active
         </p>
       </div>
@@ -65,8 +65,8 @@ export function RoadDefectsView() {
               flexShrink: 0, padding: '8px 14px', borderRadius: 8,
               background: !defectFilter.category ? 'var(--accent-subtle)' : 'var(--surface)',
               border: `1px solid ${!defectFilter.category ? 'var(--accent)' : 'var(--border-subtle)'}`,
-              color: !defectFilter.category ? 'var(--accent)' : 'var(--text-muted)',
-              cursor: 'pointer', fontSize: '0.75rem', fontWeight: 500, transition: 'all 0.15s',
+              color: !defectFilter.category ? 'var(--accent)' : 'var(--muted)',
+              cursor: 'pointer', fontSize: 12, fontWeight: 500, transition: 'all 0.15s',
             }}
           >
             All ({defects.length})
@@ -79,15 +79,15 @@ export function RoadDefectsView() {
                 flexShrink: 0, padding: '8px 14px', borderRadius: 8,
                 background: defectFilter.category === cat ? 'var(--accent-subtle)' : 'var(--surface)',
                 border: `1px solid ${defectFilter.category === cat ? 'var(--accent)' : 'var(--border-subtle)'}`,
-                color: defectFilter.category === cat ? 'var(--accent)' : 'var(--text-2)',
-                cursor: 'pointer', fontSize: '0.75rem', transition: 'all 0.15s',
+                color: defectFilter.category === cat ? 'var(--accent)' : 'var(--ink-2)',
+                cursor: 'pointer', fontSize: 12, transition: 'all 0.15s',
                 display: 'flex', alignItems: 'center', gap: 6,
               }}
             >
               <CategoryIcon category={cat} />
               <span>{defectCategoryLabel(cat)}</span>
               <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{count}</span>
-              {pending > 0 && <span style={{ background: 'var(--danger-subtle)', color: 'var(--danger)', borderRadius: 20, padding: '1px 5px', fontSize: '0.625rem', fontWeight: 700 }}>{pending}</span>}
+              {pending > 0 && <span style={{ background: 'var(--danger-subtle)', color: 'var(--danger)', borderRadius: 20, padding: '1px 5px', fontSize: 11, fontWeight: 700 }}>{pending}</span>}
             </button>
           ))}
         </div>
@@ -121,7 +121,7 @@ export function RoadDefectsView() {
         {filtered.length === 0 ? (
           <div style={{ padding: 48, textAlign: 'center' }}>
             <Wrench size={40} color="var(--surface-3)" style={{ margin: '0 auto 12px' }} />
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.9375rem' }}>No defects match your filters</div>
+            <div style={{ color: 'var(--muted)', fontSize: 15 }}>No defects match your filters</div>
           </div>
         ) : (
           filtered.map((defect, i) => {
@@ -153,10 +153,10 @@ export function RoadDefectsView() {
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text)' }}>
+                    <span style={{ fontWeight: 600, fontSize: 15, color: 'var(--ink)' }}>
                       {defectCategoryLabel(defect.category)}
                     </span>
-                    <span className="badge" style={{ background: `${sColor}18`, color: sColor, border: `1px solid ${sColor}30`, fontSize: '0.625rem' }}>
+                    <span className="badge" style={{ background: `${sColor}18`, color: sColor, border: `1px solid ${sColor}30`, fontSize: 11 }}>
                       {severityLabel(defect.severity)}
                     </span>
                     {defect.recurrenceCount > 2 && (
@@ -164,14 +164,14 @@ export function RoadDefectsView() {
                     )}
                     <span className="badge badge-muted">{defectStatusLabel(defect.status)}</span>
                   </div>
-                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 13, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {defect.locationLabel} · {defect.detectedBy} · {formatDateTime(defect.detectedAt)}
                   </div>
                 </div>
 
                 <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{defect.id}</div>
-                  <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: 2 }}>Conf: {defect.confidenceScore}%</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--muted)' }}>{defect.id}</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>Conf: {defect.confidenceScore}%</div>
                 </div>
                 <ChevronRight size={14} color="var(--text-muted)" style={{ flexShrink: 0 }} />
               </motion.button>

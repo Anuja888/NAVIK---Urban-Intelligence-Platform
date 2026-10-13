@@ -1,16 +1,31 @@
 import type { Severity, DefectCategory, Bus, IncidentType, IncidentStatus, DefectStatus } from '../../types';
 
+// ── Real hex values — never CSS vars ─────────────────────
+// These are used in SVG, Leaflet, Recharts, and inline style contexts
+// where CSS custom properties are not resolved.
+
+export const SEV_HEX_LIGHT: Record<Severity, string> = {
+  critical: '#B42318',
+  high:     '#C2410C',
+  medium:   '#A16207',
+  low:      '#15803D',
+};
+
+export const SEV_HEX_DARK: Record<Severity, string> = {
+  critical: '#FDA29B',
+  high:     '#FDBA74',
+  medium:   '#FCD34D',
+  low:      '#6EE7B7',
+};
+
 export function severityColor(s: Severity): string {
-  return {
-    low:      'var(--sev-low)',
-    medium:   'var(--sev-medium)',
-    high:     'var(--sev-high)',
-    critical: 'var(--sev-critical)',
-  }[s] ?? 'var(--text-muted)';
+  const dark = typeof document !== 'undefined' &&
+    document.documentElement.getAttribute('data-theme') === 'dark';
+  return dark ? SEV_HEX_DARK[s] : SEV_HEX_LIGHT[s];
 }
 
 export function severityLabel(s: Severity): string {
-  return { low:'Low', medium:'Medium', high:'High', critical:'Critical' }[s] ?? s;
+  return { low: 'Low', medium: 'Medium', high: 'High', critical: 'Critical' }[s] ?? s;
 }
 
 export function incidentTypeLabel(t: IncidentType): string {
@@ -27,16 +42,21 @@ export function incidentTypeLabel(t: IncidentType): string {
 }
 
 export function incidentTypeColor(t: IncidentType): string {
-  return {
-    hit_and_run:          'var(--danger)',
-    rash_driving:         'var(--danger)',
-    pedestrian_hazard:    'var(--warn)',
-    school_zone_alert:    'var(--warn)',
-    road_defect:          'var(--info)',
-    congestion_alert:     'var(--sev-high)',
-    vehicle_breakdown:    'var(--text-muted)',
-    waterlogging_critical:'var(--info)',
-  }[t] ?? 'var(--text-muted)';
+  // Real hex — used in SVG markers
+  const dark = typeof document !== 'undefined' &&
+    document.documentElement.getAttribute('data-theme') === 'dark';
+  const map: Record<IncidentType, [string, string]> = {
+    hit_and_run:           ['#B42318', '#FDA29B'],
+    rash_driving:          ['#B42318', '#FDA29B'],
+    pedestrian_hazard:     ['#A16207', '#FCD34D'],
+    school_zone_alert:     ['#A16207', '#FCD34D'],
+    road_defect:           ['#1D4ED8', '#93C5FD'],
+    congestion_alert:      ['#C2410C', '#FDBA74'],
+    vehicle_breakdown:     ['#475569', '#94A3B8'],
+    waterlogging_critical: ['#1D4ED8', '#93C5FD'],
+  };
+  const pair = map[t];
+  return pair ? (dark ? pair[1] : pair[0]) : '#64748B';
 }
 
 export function defectCategoryLabel(c: DefectCategory): string {
@@ -51,40 +71,58 @@ export function defectCategoryLabel(c: DefectCategory): string {
 }
 
 export function busStatusColor(s: Bus['status']): string {
+  // Real hex
   return {
-    active:      'var(--ok)',
-    idle:        'var(--warn)',
-    maintenance: 'var(--info)',
-    offline:     'var(--danger)',
-  }[s] ?? 'var(--text-muted)';
+    active:      '#15803D',
+    idle:        '#A16207',
+    maintenance: '#1D4ED8',
+    offline:     '#B42318',
+  }[s] ?? '#64748B';
 }
 
 export function busStatusLabel(s: Bus['status']): string {
-  return { active:'Active', idle:'Idle', maintenance:'Maintenance', offline:'Offline' }[s] ?? s;
+  return { active: 'Active', idle: 'Idle', maintenance: 'Maintenance', offline: 'Offline' }[s] ?? s;
 }
 
 export function incidentStatusLabel(s: IncidentStatus): string {
-  return { new:'New', under_review:'Under review', dispatched:'Dispatched', resolved:'Resolved' }[s] ?? s;
+  return {
+    new:          'New',
+    under_review: 'Under review',
+    dispatched:   'Dispatched',
+    resolved:     'Resolved',
+  }[s] ?? s;
 }
 
 export function defectStatusLabel(s: DefectStatus): string {
-  return { pending:'Pending', under_review:'Under review', dispatched:'Dispatched', resolved:'Resolved' }[s] ?? s;
+  return {
+    pending:      'Pending',
+    under_review: 'Under review',
+    dispatched:   'Dispatched',
+    resolved:     'Resolved',
+  }[s] ?? s;
 }
 
 export function confidenceColor(c: number): string {
-  return c >= 90 ? 'var(--ok)' : c >= 75 ? 'var(--warn)' : 'var(--danger)';
+  if (c >= 90) return '#15803D';
+  if (c >= 75) return '#A16207';
+  return '#B42318';
 }
 
-// ── Time formatters ────────────────────────────────────────
+// ── Time formatters ───────────────────────────────────────
 export function formatTime(iso: string): string {
   try {
-    return new Date(iso).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false });
+    return new Date(iso).toLocaleTimeString('en-IN', {
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    });
   } catch { return '—'; }
 }
 
 export function formatDateTime(iso: string): string {
   try {
-    return new Date(iso).toLocaleString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit', hour12:false });
+    return new Date(iso).toLocaleString('en-IN', {
+      day: '2-digit', month: 'short',
+      hour: '2-digit', minute: '2-digit', hour12: false,
+    });
   } catch { return '—'; }
 }
 

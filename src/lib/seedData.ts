@@ -7,7 +7,8 @@
 import type {
   Bus, Incident, RoadDefect, SchoolZone, TrafficSegment,
   HeatPoint, ODFlowEntry, LatLng, Camera,
-  WorkOrder, EdgeNode, RoadHealthSegment, AgentActivityEntry,
+  EdgeNode, RoadHealthSegment, AgentActivityEntry,
+  Severity, IncidentStatus,
 } from '../types';
 
 // ── Seeded PRNG (deterministic) ────────────────────────────
@@ -19,9 +20,7 @@ function seededRand(seed: string): () => number {
 function sr(seed: string, min: number, max: number): number {
   return seededRand(seed)() * (max - min) + min;
 }
-function pick<T>(seed: string, arr: T[]): T {
-  return arr[Math.floor(seededRand(seed)() * arr.length)];
-}
+// (pick helper removed — unused)
 
 // ── Hyderabad real corridor routes (15 routes) ─────────────
 const ROUTES = [
@@ -427,9 +426,10 @@ const DEFECT_CATEGORIES: Array<{
 ];
 
 const SEVERITIES: Severity[] = ['low','medium','high','critical'];
-const GHMC_CIRCLES = ['Charminar','Khairatabad','Serilingampally','Secunderabad','LB Nagar','Kukatpally','Abdullapurmet','Rajendranagar'];
-const GHMC_WARDS   = ['Ward 42','Ward 78','Ward 102','Ward 55','Ward 31','Ward 88','Ward 64','Ward 19','Ward 203','Ward 117'];
-const CONTRACTORS  = ['M/s Srinivasa Infra','M/s Balaji Roads','M/s Hyderabad Civil Works','M/s Deccan Contractors','M/s Sri Rama Projects','M/s Kiran Infrastructure'];
+const _GHMC_CIRCLES = ['Charminar','Khairatabad','Serilingampally','Secunderabad','LB Nagar','Kukatpally','Abdullapurmet','Rajendranagar'];
+const _GHMC_WARDS   = ['Ward 42','Ward 78','Ward 102','Ward 55','Ward 31','Ward 88','Ward 64','Ward 19','Ward 203','Ward 117'];
+const _CONTRACTORS  = ['M/s Srinivasa Infra','M/s Balaji Roads','M/s Hyderabad Civil Works','M/s Deccan Contractors','M/s Sri Rama Projects','M/s Kiran Infrastructure'];
+void _GHMC_CIRCLES; void _GHMC_WARDS; void _CONTRACTORS;
 
 export function generateDefects(): RoadDefect[] {
   return DEFECT_CATEGORIES.map((t, i) => {
@@ -491,7 +491,7 @@ export function generateTrafficSegments(): TrafficSegment[] {
     { id:'SEG-11', name:'Tank Bund–Lakdikapul',        from:{lat:17.4150,lng:78.4720}, to:{lat:17.3930,lng:78.4590}, cong:76, density:168, speed:20, delay:15 },
     { id:'SEG-12', name:'KPHB–Miyapur Metro',          from:{lat:17.4880,lng:78.4476}, to:{lat:17.4969,lng:78.3647}, cong:48, density:108, speed:42, delay:4  },
   ];
-  return segs.map(s => ({ ...s, vehicleDensity:s.density, avgSpeed:s.speed }));
+  return segs.map(s => ({ ...s, congestionScore:s.cong, vehicleDensity:s.density, avgSpeed:s.speed }));
 }
 
 // ── Heat points ────────────────────────────────────────────
@@ -579,7 +579,7 @@ export function generateDensityTimeline() {
 
 // ── Edge Nodes (one per bus) ───────────────────────────────
 export function generateEdgeNodes(buses: Bus[]): EdgeNode[] {
-  return buses.map((bus,i) => {
+  return buses.map((bus,_i) => {
     const seed = `en-${bus.id}`;
     const r = seededRand(seed);
     const uploaded = Math.floor(r() * 80) + 20;
@@ -608,7 +608,7 @@ export function generateEdgeNodes(buses: Bus[]): EdgeNode[] {
 // ── Road Health Segments ───────────────────────────────────
 export function generateRoadHealthSegments(): RoadHealthSegment[] {
   const segs = generateTrafficSegments();
-  return segs.map((seg,i) => {
+  return segs.map((seg,_i) => {
     const seed = `rhs-${seg.id}`;
     const r = seededRand(seed);
     const defectDensity = r() * 4 + 0.5;

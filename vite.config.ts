@@ -9,4 +9,8 @@ export default defineConfig({
       '@': '/src',
     },
   },
+  build: {
+    // Suppress the 500 kB chunk warning — bundle is large due to Recharts + Leaflet + Framer
+    chunkSizeWarningLimit: 1600,
+  },
 })

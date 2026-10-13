@@ -95,6 +95,8 @@ function HeatmapLayer() {
 function ODFlowLayer() {
   const flows  = useNavikStore((s) => s.odFlows);
   const maxVol = Math.max(...flows.map((f) => f.volume), 1);
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const odColor = isDark ? '#2DD4BF' : '#0F766E';
   return (
     <>
       {flows.map((f, i) => (
@@ -102,15 +104,15 @@ function ODFlowLayer() {
           key={i}
           positions={[[f.fromPos.lat, f.fromPos.lng], [f.toPos.lat, f.toPos.lng]]}
           pathOptions={{
-            color: 'var(--accent)',
+            color: odColor,
             weight: Math.max(1.5, (f.volume / maxVol) * 8),
-            opacity: 0.5,
+            opacity: 0.6,
             dashArray: '6 4',
           }}
         >
           <Popup>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, padding: '8px 10px' }}>
-              <strong style={{ color: 'var(--text)' }}>{f.from} → {f.to}</strong>
+            <div style={{ fontFamily: 'var(--font-ui)', fontSize: 13, padding: '8px 10px' }}>
+              <strong style={{ color: 'var(--ink)' }}>{f.from} → {f.to}</strong>
               <div style={{ marginTop: 4, color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
                 {f.volume.toLocaleString()} trips/day
               </div>
@@ -246,9 +248,9 @@ function SchoolZoneMarkers() {
         <Circle key={z.id} center={[z.position.lat, z.position.lng]} radius={z.radius}
           pathOptions={{ color: '#f5b83d', fillColor: '#f5b83d', fillOpacity: 0.08, weight: 1.5, dashArray: '5 4' }}>
           <Popup>
-            <div style={{ padding: '8px 10px', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+            <div style={{ padding: '8px 10px', fontFamily: 'var(--font-ui)', fontSize: 13 }}>
               <strong>🏫 {z.name}</strong>
-              <div style={{ marginTop: 4, color: 'var(--text-2)', fontSize: 12 }}>
+              <div style={{ marginTop: 4, color: 'var(--ink-2)', fontSize: 12 }}>
                 Alert: {z.alertTimes.map((t) => `${t.start}–${t.end}`).join(', ')}
               </div>
             </div>
@@ -328,74 +330,91 @@ function PursuitTrailLayer() {
   return null;
 }
 
-// ── Layer toggle bar ───────────────────────────────────────
+// ── Layer popover (replaces 7 chips with single button) ────
 const LAYER_DEFS = [
-  { id: 'buses'         as const, label: 'Buses',    color: 'var(--ok)' },
-  { id: 'incidents'     as const, label: 'Incidents',color: 'var(--danger)'  },
-  { id: 'heatmap'       as const, label: 'Heat',     color: '#ff8c42'              },
-  { id: 'defects'       as const, label: 'Defects',  color: 'var(--warn)' },
-  { id: 'school_zones'  as const, label: 'Schools',  color: '#f5b83d'              },
-  { id: 'od_flow'       as const, label: 'O-D Flow', color: 'var(--accent)'  },
-  { id: 'pursuit_trail' as const, label: 'Pursuit',  color: 'var(--danger)'  },
+  { id: 'buses'         as const, label: 'Buses',    hexL: '#15803D', hexD: '#6EE7B7' },
+  { id: 'incidents'     as const, label: 'Incidents',hexL: '#B42318', hexD: '#FDA29B' },
+  { id: 'heatmap'       as const, label: 'Heatmap',  hexL: '#C2410C', hexD: '#FDBA74' },
+  { id: 'defects'       as const, label: 'Defects',  hexL: '#A16207', hexD: '#FCD34D' },
+  { id: 'school_zones'  as const, label: 'Schools',  hexL: '#A16207', hexD: '#FCD34D' },
+  { id: 'od_flow'       as const, label: 'O-D Flow', hexL: '#0F766E', hexD: '#2DD4BF' },
+  { id: 'pursuit_trail' as const, label: 'Pursuit',  hexL: '#B42318', hexD: '#FDA29B' },
 ];
 
-function LayerToggleBar() {
+function LayerPopover() {
   const activeLayers = useNavikStore((s) => s.activeLayers);
   const toggleLayer  = useNavikStore((s) => s.toggleLayer);
-  const incidents    = useNavikStore((s) => s.incidents);
   const buses        = useNavikStore((s) => s.buses);
+  const incidents    = useNavikStore((s) => s.incidents);
   const defects      = useNavikStore((s) => s.defects);
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+  React.useEffect(() => {
+    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
 
   const counts: Partial<Record<string, number>> = {
-    buses:    buses.filter((b) => b.status === 'active').length,
+    buses:     buses.filter((b) => b.status === 'active').length,
     incidents: incidents.filter((i) => i.status !== 'resolved').length,
-    defects:  defects.filter((d) => d.status !== 'resolved').length,
+    defects:   defects.filter((d) => d.status !== 'resolved').length,
   };
 
+  const activeCount = LAYER_DEFS.filter((l) => activeLayers.has(l.id)).length;
+
   return (
-    <div style={{
-      position: 'absolute', bottom: 20,
-      left: '50%', transform: 'translateX(-50%)',
-      zIndex: 500,
-      display: 'flex', gap: 4,
-      padding: '6px 8px',
-      background: 'var(--surface)',
-      border: '1px solid var(--border)',
-      borderRadius: 12,
-      boxShadow: 'var(--shadow-lg)',
-    }}>
-      {LAYER_DEFS.map((layer) => {
-        const active = activeLayers.has(layer.id);
-        const count  = counts[layer.id];
-        return (
-          <button key={layer.id} onClick={() => toggleLayer(layer.id)}
-            title={layer.label}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              padding: '4px 10px',
-              background: active ? `${layer.color}18` : 'transparent',
-              border: `1px solid ${active ? layer.color + '44' : 'var(--border)'}`,
-              borderRadius: 8, cursor: 'pointer',
-              fontSize: '0.6875rem', fontWeight: active ? 700 : 500,
-              color: active ? layer.color : 'var(--text-muted)',
-              transition: 'all 0.13s',
-              whiteSpace: 'nowrap',
-            }}>
-            <span style={{
-              width: 5, height: 5, borderRadius: '50%',
-              background: active ? layer.color : 'var(--border-strong)',
-              boxShadow: active ? `0 0 5px ${layer.color}` : 'none',
-              transition: 'all 0.13s', flexShrink: 0,
-            }} />
-            {layer.label}
-            {count !== undefined && (
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5625rem', fontWeight: 700, opacity: 0.8 }}>
-                {count}
-              </span>
-            )}
-          </button>
-        );
-      })}
+    <div ref={ref} style={{ position: 'absolute', bottom: 16, right: 16, zIndex: 500 }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '6px 13px',
+          background: isDark ? '#1B2433' : '#FFFFFF',
+          border: `1px solid ${isDark ? '#2A3648' : '#E5E7EB'}`,
+          borderRadius: 8, cursor: 'pointer',
+          fontSize: 13, fontWeight: 500,
+          color: isDark ? '#F1F5F9' : '#0F172A',
+          boxShadow: '0 2px 8px rgba(15,23,42,0.10)',
+          fontFamily: '"Plus Jakarta Sans", sans-serif',
+        }}
+      >
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: isDark ? '#2DD4BF' : '#0F766E' }} />
+        Layers {activeCount < LAYER_DEFS.length && <span style={{ fontSize: 11, color: isDark ? '#94A3B8' : '#64748B' }}>{activeCount}/{LAYER_DEFS.length}</span>}
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', bottom: '100%', right: 0, marginBottom: 6,
+          background: isDark ? '#1B2433' : '#FFFFFF',
+          border: `1px solid ${isDark ? '#2A3648' : '#E5E7EB'}`,
+          borderRadius: 10, boxShadow: '0 4px 20px rgba(15,23,42,0.14)',
+          padding: '6px', minWidth: 175,
+        }}>
+          {LAYER_DEFS.map((layer) => {
+            const active = activeLayers.has(layer.id);
+            const hex    = isDark ? layer.hexD : layer.hexL;
+            const count  = counts[layer.id];
+            return (
+              <button key={layer.id} onClick={() => toggleLayer(layer.id)} style={{
+                display: 'flex', alignItems: 'center', gap: 9,
+                width: '100%', padding: '7px 10px',
+                background: active ? (isDark ? '#232F42' : '#F1F4F8') : 'transparent',
+                border: 'none', borderRadius: 7, cursor: 'pointer', textAlign: 'left',
+                fontSize: 13, fontFamily: '"Plus Jakarta Sans", sans-serif',
+                color: active ? (isDark ? '#F1F5F9' : '#0F172A') : (isDark ? '#94A3B8' : '#64748B'),
+                transition: 'background 0.1s', marginBottom: 2,
+              }}>
+                <span style={{ width: 9, height: 9, borderRadius: '50%', background: active ? hex : (isDark ? '#3A4A63' : '#D1D5DB'), flexShrink: 0 }} />
+                <span style={{ flex: 1 }}>{layer.label}</span>
+                {count !== undefined && active && <span style={{ fontSize: 11, fontFamily: '"JetBrains Mono", monospace' }}>{count}</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -436,7 +455,7 @@ export function GISMap() {
 
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%' }}>
-      <LayerToggleBar />
+      <LayerPopover />
       <MapContainer
         center={[17.4065, 78.4772]}
         zoom={12}

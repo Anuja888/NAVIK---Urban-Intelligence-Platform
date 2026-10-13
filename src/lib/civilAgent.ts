@@ -26,10 +26,11 @@ const GHMC_WARDS = [
   'Ward 42','Ward 78','Ward 102','Ward 55','Ward 31',
   'Ward 88','Ward 64','Ward 19','Ward 203','Ward 117',
 ];
-const CONTRACTORS = [
+const _CONTRACTORS_CA = [
   'M/s Srinivasa Infra','M/s Balaji Roads','M/s Hyderabad Civil Works',
   'M/s Deccan Contractors','M/s Sri Rama Projects','M/s Kiran Infrastructure',
 ];
+void _CONTRACTORS_CA;
 const RAINFALL_FORECAST_MM = [0, 0, 12, 45, 78, 22, 5, 0, 0, 31]; // mock forecast by circle idx
 
 function seeded(seed: string): number {
@@ -39,13 +40,11 @@ function seeded(seed: string): number {
   return (h>>>0)/4294967296;
 }
 
-function pick<T>(arr: T[], seed: string): T {
-  return arr[Math.floor(seeded(seed) * arr.length)];
-}
+// (pick helper removed — unused)
 
 export function computeWorkOrder(
   defect: RoadDefect,
-  buses: Bus[],
+  _buses: Bus[],
   schoolZones: SchoolZone[],
   seqNum: number,
 ): WorkOrder {

@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HardHat, Plus, CheckCircle, Truck, Wrench, Star, X, ChevronRight, AlertTriangle, FileDown, RotateCcw } from 'lucide-react';
+import { HardHat, Plus, CheckCircle, Star, X, ChevronRight, FileDown, RotateCcw } from 'lucide-react';
 import { useNavikStore } from '../../store/navikStore';
-import { severityColor, severityLabel, defectCategoryLabel, formatDateTime } from '../../components/ui/helpers';
+import { severityColor, severityLabel, defectCategoryLabel } from '../../components/ui/helpers';
 import type { WorkOrder, WorkOrderStatus } from '../../types';
 
 const COLUMNS: { status: WorkOrderStatus; label: string; color: string }[] = [
-  { status: 'drafted',       label: 'Drafted',        color: 'var(--text-2)' },
+  { status: 'drafted',       label: 'Drafted',        color: 'var(--ink-2)' },
   { status: 'approved',      label: 'Approved',       color: 'var(--info)'     },
   { status: 'crew_dispatched',label:'Crew Dispatched', color: 'var(--warn)'  },
   { status: 'in_progress',   label: 'In Progress',    color: 'var(--accent)'   },
@@ -25,23 +25,23 @@ function WorkOrderCard({ wo, onClick }: { wo: WorkOrder; onClick: () => void }) 
     <div className="kanban-card" onClick={onClick} role="button" tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && onClick()}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8, gap: 6 }}>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.625rem', color: 'var(--text-muted)' }}>{wo.id}</span>
-        <span style={{ fontSize: '0.5625rem', fontWeight: 700, color: sevColor, background: `${sevColor}15`, border: `1px solid ${sevColor}28`, padding: '1px 6px', borderRadius: 999, fontFamily: 'var(--font-mono)' }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)' }}>{wo.id}</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: sevColor, background: `${sevColor}15`, border: `1px solid ${sevColor}28`, padding: '1px 6px', borderRadius: 999, fontFamily: 'var(--font-mono)' }}>
           {severityLabel(wo.severity)}
         </span>
       </div>
-      <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>
         {defectCategoryLabel(wo.defectCategory)}
       </div>
-      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 8 }}>{wo.locationLabel}</div>
+      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>{wo.locationLabel}</div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <div style={{ width: 28, height: 4, background: 'var(--surface-2)', borderRadius: 999 }}>
             <div style={{ height: '100%', width: `${wo.priorityScore}%`, background: wo.priorityScore >= 80 ? 'var(--danger)' : wo.priorityScore >= 60 ? 'var(--warn)' : 'var(--ok)', borderRadius: 999 }} />
           </div>
-          <span style={{ fontSize: '0.5625rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{wo.priorityScore}</span>
+          <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--muted)' }}>{wo.priorityScore}</span>
         </div>
-        <span style={{ fontSize: '0.625rem', color: 'var(--text-muted)' }}>₹{(wo.boq.estimatedCostINR/1000).toFixed(0)}K</span>
+        <span style={{ fontSize: 11, color: 'var(--muted)' }}>₹{(wo.boq.estimatedCostINR/1000).toFixed(0)}K</span>
       </div>
       {wo.nearSchoolZone && (
         <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -69,6 +69,8 @@ function WorkOrderDetailPanel({ woId, onClose }: { woId: string; onClose: () => 
   const canAdvance = wo.status !== 'ai_verified' && wo.status !== 'rejected' && wo.status !== 'reopened';
 
   function advance() {
+    const woSafe = wo;
+    if (!woSafe) return;
     const actions: Record<WorkOrderStatus, string> = {
       drafted:        'Approved by supervisor',
       approved:       'Contractor assigned & crew dispatched',
@@ -81,8 +83,8 @@ function WorkOrderDetailPanel({ woId, onClose }: { woId: string; onClose: () => 
     };
     const next = statusOrder[currentIdx + 1];
     if (next) {
-      updateWorkOrderStatus(wo.id, next, actions[wo.status]);
-      addToast({ type: 'success', title: `Status → ${next.replace('_',' ')}`, message: wo.id });
+      updateWorkOrderStatus(woSafe.id, next, actions[woSafe.status]);
+      addToast({ type: 'success', title: `Status → ${next.replace('_',' ')}`, message: woSafe.id });
     }
   }
 
@@ -99,7 +101,7 @@ function WorkOrderDetailPanel({ woId, onClose }: { woId: string; onClose: () => 
       {/* Header */}
       <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
         <div>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--accent)' }}>{wo.id}</span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--accent)' }}>{wo.id}</span>
           <h3 style={{ marginTop: 2 }}>{defectCategoryLabel(wo.defectCategory)}</h3>
         </div>
         <button className="btn btn-ghost btn-icon btn-sm" onClick={onClose}><X size={15} /></button>
@@ -115,15 +117,15 @@ function WorkOrderDetailPanel({ woId, onClose }: { woId: string; onClose: () => 
               <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                 <div style={{
                   width: 8, height: 8, borderRadius: '50%',
-                  background: done ? col?.color ?? 'var(--text-muted)' : 'var(--surface-2)',
+                  background: done ? col?.color ?? 'var(--muted)' : 'var(--surface-2)',
                   boxShadow: done && wo.status === s ? `0 0 6px ${col?.color}` : 'none',
                   transition: 'all 0.2s',
                 }} />
-                {i < 5 && <div style={{ width: 16, height: 1, background: done ? 'var(--text-muted)' : 'var(--surface-2)' }} />}
+                {i < 5 && <div style={{ width: 16, height: 1, background: done ? 'var(--muted)' : 'var(--surface-2)' }} />}
               </div>
             );
           })}
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-2)', marginLeft: 6 }}>
+          <span style={{ fontSize: 12, color: 'var(--ink-2)', marginLeft: 6 }}>
             {wo.status.replace(/_/g,' ')}
           </span>
         </div>
@@ -141,22 +143,22 @@ function WorkOrderDetailPanel({ woId, onClose }: { woId: string; onClose: () => 
             { label:'Rainfall',     value: `${wo.rainfallForecastMM}mm forecast`, mono: true },
           ].map(({ label, value, mono }) => (
             <div key={label} style={{ background: 'var(--surface-2)', borderRadius: 8, padding: '9px 11px', border: '1px solid var(--border)' }}>
-              <div style={{ fontSize: '0.5625rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 3 }}>{label}</div>
-              <div style={{ fontSize: '0.8125rem', fontFamily: mono ? 'var(--font-mono)' : 'inherit', color: 'var(--text)', fontWeight: 500 }}>{value}</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 3 }}>{label}</div>
+              <div style={{ fontSize: 13, fontFamily: mono ? 'var(--font-mono)' : 'inherit', color: 'var(--ink)', fontWeight: 500 }}>{value}</div>
             </div>
           ))}
         </div>
 
         {/* Repair method */}
         <div style={{ padding: '10px 12px', borderRadius: 8, background: `${repairColors[wo.repairMethod] ?? 'var(--accent)'}10`, border: `1px solid ${repairColors[wo.repairMethod] ?? 'var(--accent)'}25`, marginBottom: 16 }}>
-          <div style={{ fontSize: '0.5625rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 4 }}>Recommended Repair Method</div>
-          <div style={{ fontSize: '0.8125rem', color: repairColors[wo.repairMethod] ?? 'var(--accent)', fontWeight: 600 }}>{wo.repairMethodLabel}</div>
-          <div style={{ fontSize: '0.625rem', color: 'var(--text-muted)', marginTop: 3 }}>Indicative guidance — aligned with IRC:82 maintenance practice</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 4 }}>Recommended Repair Method</div>
+          <div style={{ fontSize: 13, color: repairColors[wo.repairMethod] ?? 'var(--accent)', fontWeight: 600 }}>{wo.repairMethodLabel}</div>
+          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>Indicative guidance — aligned with IRC:82 maintenance practice</div>
         </div>
 
         {/* BOQ */}
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Bill of Quantities</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Bill of Quantities</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {[
               ['Bituminous Mix', `${wo.boq.bituminousMixKg} kg`],
@@ -167,13 +169,13 @@ function WorkOrderDetailPanel({ woId, onClose }: { woId: string; onClose: () => 
               ['Equipment',      wo.boq.equipment.slice(0,3).join(', ')],
               ['TMP',            wo.boq.trafficManagementPlan.slice(0,50)+'…'],
             ].map(([k,v]) => (
-              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', padding: '4px 0', borderBottom: '1px solid var(--border-subtle)' }}>
-                <span style={{ color: 'var(--text-muted)' }}>{k}</span>
-                <span style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: '0.6875rem' }}>{v}</span>
+              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '4px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+                <span style={{ color: 'var(--muted)' }}>{k}</span>
+                <span style={{ color: 'var(--ink)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{v}</span>
               </div>
             ))}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', padding: '8px 0 4px', borderTop: '2px solid var(--border)' }}>
-              <span style={{ fontWeight: 600, color: 'var(--text-2)' }}>Estimated Cost</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '8px 0 4px', borderTop: '2px solid var(--border)' }}>
+              <span style={{ fontWeight: 600, color: 'var(--ink-2)' }}>Estimated Cost</span>
               <span style={{ fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>
                 ₹{wo.boq.estimatedCostINR.toLocaleString('en-IN')}
               </span>
@@ -201,7 +203,7 @@ function WorkOrderDetailPanel({ woId, onClose }: { woId: string; onClose: () => 
               </button>
             </div>
             {wo.contractorName && (
-              <div style={{ fontSize: '0.75rem', color: 'var(--ok)', marginTop: 5 }}>
+              <div style={{ fontSize: 12, color: 'var(--ok)', marginTop: 5 }}>
                 ✓ {wo.contractorName}
               </div>
             )}
@@ -211,7 +213,7 @@ function WorkOrderDetailPanel({ woId, onClose }: { woId: string; onClose: () => 
         {/* Reasoning trace */}
         <div style={{ marginBottom: 16 }}>
           <button onClick={() => setShowReasoning(!showReasoning)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent)', fontSize: '0.75rem', fontWeight: 600, padding: 0 }}>
+            style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent)', fontSize: 12, fontWeight: 600, padding: 0 }}>
             <ChevronRight size={13} style={{ transform: showReasoning ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }} />
             View Agent Reasoning Trace
           </button>
@@ -231,9 +233,9 @@ function WorkOrderDetailPanel({ woId, onClose }: { woId: string; onClose: () => 
         {/* Action log */}
         {wo.actions.length > 0 && (
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Action Log</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Action Log</div>
             {wo.actions.map((a, i) => (
-              <div key={i} style={{ display: 'flex', gap: 7, fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+              <div key={i} style={{ display: 'flex', gap: 7, fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>
                 <span style={{ color: 'var(--ok)', flexShrink: 0 }}>›</span>
                 <span>{a}</span>
               </div>
@@ -248,7 +250,7 @@ function WorkOrderDetailPanel({ woId, onClose }: { woId: string; onClose: () => 
             background: wo.verificationResult === 'pass' ? 'var(--ok-subtle)' : 'var(--danger-subtle)',
             border: `1px solid ${wo.verificationResult === 'pass' ? 'rgba(46,196,160,0.25)' : 'rgba(255,92,92,0.25)'}`,
           }}>
-            <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: wo.verificationResult === 'pass' ? 'var(--ok)' : 'var(--danger)' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: wo.verificationResult === 'pass' ? 'var(--ok)' : 'var(--danger)' }}>
               {wo.verificationResult === 'pass' ? '✓ Repair AI-Verified Clean' : '✗ Repair Failed Verification'}
             </div>
           </div>
@@ -312,21 +314,21 @@ export function CivilWorksView() {
       {/* Main kanban area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Toolbar */}
-        <div style={{ flexShrink: 0, padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: 'var(--bg)' }}>
+        <div style={{ flexShrink: 0, padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: 'var(--canvas)' }}>
           <HardHat size={16} color="var(--accent)" />
-          <h2 style={{ fontSize: '0.9375rem', marginRight: 'auto' }}>Civil Works</h2>
+          <h2 style={{ fontSize: 15, marginRight: 'auto' }}>Civil Works</h2>
 
           {/* Stats */}
           <div style={{ display: 'flex', gap: 16 }}>
             {[
-              { label: 'Total WOs', value: workOrders.length, color: 'var(--text-2)' },
+              { label: 'Total WOs', value: workOrders.length, color: 'var(--ink-2)' },
               { label: 'Open', value: workOrders.filter(w => !['ai_verified','rejected'].includes(w.status)).length, color: 'var(--warn)' },
               { label: 'Verified', value: workOrders.filter(w => w.status === 'ai_verified').length, color: 'var(--ok)' },
               { label: 'Est. Cost', value: `₹${(totalCost/100000).toFixed(1)}L`, color: 'var(--accent)' },
             ].map(({ label, value, color }) => (
               <div key={label} style={{ textAlign: 'center' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem', color }}>{value}</div>
-                <div style={{ fontSize: '0.5625rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
+                <div style={{ fontFamily: 'var(--font-ui)', fontWeight: 700, fontSize: 16, color }}>{value}</div>
+                <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
               </div>
             ))}
           </div>
@@ -344,8 +346,8 @@ export function CivilWorksView() {
         </div>
 
         {/* Filter bar */}
-        <div style={{ flexShrink: 0, padding: '8px 20px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, background: 'var(--bg)' }}>
-          <select className="form-select" style={{ width: 160, height: 32, fontSize: '0.8125rem' }}
+        <div style={{ flexShrink: 0, padding: '8px 20px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, background: 'var(--canvas)' }}>
+          <select className="form-select" style={{ width: 160, height: 32, fontSize: 13 }}
             value={woFilter.status} onChange={(e) => setWoFilter({ status: e.target.value })}>
             <option value="">All Statuses</option>
             {COLUMNS.map((c) => <option key={c.status} value={c.status}>{c.label}</option>)}
@@ -379,7 +381,7 @@ export function CivilWorksView() {
                   <div key={col.status} className="kanban-col" style={{ minHeight: 200 }}>
                     <div className="kanban-col-header" style={{ color: col.color }}>
                       <span>{col.label}</span>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.625rem', background: `${col.color}15`, padding: '1px 6px', borderRadius: 999 }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: `${col.color}15`, padding: '1px 6px', borderRadius: 999 }}>
                         {items.length}
                       </span>
                     </div>

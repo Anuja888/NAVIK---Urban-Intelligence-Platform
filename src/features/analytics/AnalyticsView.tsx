@@ -12,13 +12,22 @@ const routeDelays     = generateRouteDelays();
 const defectBreakdown = generateDefectBreakdown();
 const densityData     = generateDensityTimeline();
 
-const GRID  = 'rgba(255,255,255,0.05)';
-const TICK  = '#566a85';
-const TT    = {
-  contentStyle: { background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 12 },
-  labelStyle:   { color: '#a8b2c8', fontSize: 11 },
-  cursor:       { fill: 'rgba(61,213,243,0.04)' },
+// Real hex values — must not use CSS vars in chart/Leaflet contexts
+const GRID = '#E5E7EB';
+const TICK = '#94A3B8';
+const TT = {
+  contentStyle: { background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 10, fontSize: 12, fontFamily: '"Plus Jakarta Sans", sans-serif' },
+  labelStyle:   { color: '#64748B', fontSize: 11 },
+  cursor:       { fill: 'rgba(15,118,110,0.05)' },
 };
+
+// Congestion score → hex colour (not CSS vars)
+function congestionHex(score: number): string {
+  if (score >= 80) return '#B42318';
+  if (score >= 65) return '#C2410C';
+  if (score >= 50) return '#A16207';
+  return '#15803D';
+}
 
 const TABS = [
   { id:'traffic',    label:'Traffic & Density', icon:TrendingUp },
@@ -52,7 +61,7 @@ function TrafficAdvisorTab() {
       <div style={{ flex: '1 1 320px', minWidth: 0 }}>
         <div className="panel" style={{ marginBottom: 16 }}>
           <div className="panel-header">
-            <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>Select Bottleneck to Advise</span>
+            <span style={{ fontSize: 14, fontWeight: 600 }}>Select Bottleneck to Advise</span>
           </div>
           <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {topSegs.map((seg) => {
@@ -70,15 +79,15 @@ function TrafficAdvisorTab() {
                   onClick={() => setSelectedSegId(seg.id)}
                 >
                   <div>
-                    <div style={{ fontSize:'0.8125rem', fontWeight:600, color:'var(--text)' }}>{seg.name}</div>
-                    <div style={{ fontSize:'0.6875rem', color:'var(--text-muted)', fontFamily:'var(--font-mono)', marginTop:2 }}>
+                    <div style={{ fontSize:'0.8125rem', fontWeight:600, color:'var(--ink)' }}>{seg.name}</div>
+                    <div style={{ fontSize:'0.6875rem', color:'var(--muted)', fontFamily:'var(--font-mono)', marginTop:2 }}>
                       {seg.avgSpeed} km/h · +{seg.delay}min
                       {seg.advisoryApplied && <span style={{ marginLeft:6, color:'var(--ok)' }}>✓ Advisory applied</span>}
                     </div>
                   </div>
                   <div style={{ textAlign:'right' }}>
-                    <span style={{ fontFamily:'var(--font-display)', fontSize:'1.25rem', fontWeight:700, color:sc }}>{seg.congestionScore}</span>
-                    {adv && <div style={{ fontSize:'0.5625rem', color:'var(--text-muted)', fontFamily:'var(--font-mono)' }}>{adv.id}</div>}
+                    <span style={{ fontFamily:'var(--font-ui)', fontSize:'1.25rem', fontWeight:700, color:sc }}>{seg.congestionScore}</span>
+                    {adv && <div style={{ fontSize:'0.5625rem', color:'var(--muted)', fontFamily:'var(--font-mono)' }}>{adv.id}</div>}
                   </div>
                 </div>
               );
@@ -121,19 +130,19 @@ function TrafficAdvisorTab() {
               <div style={{ display:'flex', gap:12, marginBottom:16 }}>
                 {[
                   { label:'Congestion (before)', value:`${selectedAdv.beforeCongestion}`, color:scoreColor(selectedAdv.beforeCongestion) },
-                  { label:'Speed (before)',       value:`${selectedAdv.beforeSpeed} km/h`, color:'var(--text-2)' },
+                  { label:'Speed (before)',       value:`${selectedAdv.beforeSpeed} km/h`, color:'var(--ink-2)' },
                   { label:'Delay (before)',        value:`+${selectedAdv.beforeDelay}min`, color:'var(--warn)' },
                 ].map(({ label, value, color }) => (
                   <div key={label} style={{ flex:1, background:'var(--surface-2)', borderRadius:8, padding:'8px', textAlign:'center', border:'1px solid var(--border)' }}>
                     <div style={{ fontFamily:'var(--font-mono)', fontWeight:700, fontSize:'0.9375rem', color }}>{value}</div>
-                    <div style={{ fontSize:'0.5625rem', color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginTop:2 }}>{label}</div>
+                    <div style={{ fontSize:'0.5625rem', color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginTop:2 }}>{label}</div>
                   </div>
                 ))}
               </div>
 
               {/* Ranked actions */}
               <div style={{ marginBottom:14 }}>
-                <div style={{ fontSize:'0.6875rem', fontWeight:700, color:'var(--text-2)', textTransform:'uppercase', letterSpacing:'0.09em', marginBottom:8 }}>Ranked Actions</div>
+                <div style={{ fontSize:'0.6875rem', fontWeight:700, color:'var(--ink-2)', textTransform:'uppercase', letterSpacing:'0.09em', marginBottom:8 }}>Ranked Actions</div>
                 {selectedAdv.actions.map((action, idx) => {
                   const isSelected = selectedAdv.selectedActionIndex === idx;
                   return (
@@ -148,13 +157,13 @@ function TrafficAdvisorTab() {
                         <div>
                           <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:3 }}>
                             <span style={{ width:18, height:18, borderRadius:'50%', background:'var(--accent)', color:'#05080e', fontSize:'0.625rem', fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontFamily:'var(--font-mono)' }}>{action.rank}</span>
-                            <span style={{ fontSize:'0.875rem', fontWeight:600, color:'var(--text)' }}>{action.label}</span>
+                            <span style={{ fontSize:'0.875rem', fontWeight:600, color:'var(--ink)' }}>{action.label}</span>
                           </div>
-                          <p style={{ fontSize:'0.75rem', color:'var(--text-muted)', margin:0 }}>{action.rationale}</p>
+                          <p style={{ fontSize:'0.75rem', color:'var(--muted)', margin:0 }}>{action.rationale}</p>
                           {action.alternatRoad && <div style={{ fontSize:'0.6875rem', color:'var(--info)', marginTop:3 }}>Via: {action.alternatRoad}</div>}
                         </div>
                         <div style={{ textAlign:'right', flexShrink:0 }}>
-                          <div style={{ fontSize:'0.625rem', color:'var(--text-muted)' }}>After sim:</div>
+                          <div style={{ fontSize:'0.625rem', color:'var(--muted)' }}>After sim:</div>
                           <div style={{ fontFamily:'var(--font-mono)', fontWeight:700, fontSize:'0.875rem', color:scoreColor(action.expectedCongestionAfter) }}>{action.expectedCongestionAfter}</div>
                           <div style={{ fontSize:'0.5625rem', color:'var(--ok)', fontFamily:'var(--font-mono)' }}>{action.expectedSpeedAfter} km/h</div>
                         </div>
@@ -187,10 +196,10 @@ function TrafficAdvisorTab() {
                           const pct = Math.round(Math.abs((after-before)/before*100));
                           return (
                             <div key={label} style={{ flex:1, textAlign:'center' }}>
-                              <div style={{ fontSize:'0.5625rem', color:'var(--text-muted)', textTransform:'uppercase', marginBottom:4 }}>{label}</div>
-                              <div style={{ fontFamily:'var(--font-mono)', fontSize:'0.6875rem', color:'var(--text-muted)' }}>{before}{unit}</div>
+                              <div style={{ fontSize:'0.5625rem', color:'var(--muted)', textTransform:'uppercase', marginBottom:4 }}>{label}</div>
+                              <div style={{ fontFamily:'var(--font-mono)', fontSize:'0.6875rem', color:'var(--muted)' }}>{before}{unit}</div>
                               <div style={{ color:'var(--accent)', fontSize:'0.875rem' }}>↓</div>
-                              <div style={{ fontFamily:'var(--font-display)', fontWeight:700, fontSize:'1rem', color:improved?'var(--ok)':'var(--danger)' }}>{after}{unit}</div>
+                              <div style={{ fontFamily:'var(--font-ui)', fontWeight:700, fontSize:'1rem', color:improved?'var(--ok)':'var(--danger)' }}>{after}{unit}</div>
                               <div style={{ fontSize:'0.5625rem', color:improved?'var(--ok)':'var(--danger)', marginTop:2 }}>
                                 {improved ? '▼' : '▲'} {pct}%
                               </div>
@@ -252,12 +261,12 @@ function TrafficAdvisorTab() {
         {/* Advisory log */}
         {advisories.length > 0 && (
           <div style={{ marginTop:16 }}>
-            <div style={{ fontSize:'0.6875rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.09em', marginBottom:8 }}>Advisory Log</div>
+            <div style={{ fontSize:'0.6875rem', fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.09em', marginBottom:8 }}>Advisory Log</div>
             {advisories.map((adv) => (
               <div key={adv.id} onClick={() => setSelectedAdvId(adv.id)}
                 style={{ display:'flex', justifyContent:'space-between', padding:'8px 12px', background:'var(--surface-2)', borderRadius:8, marginBottom:4, cursor:'pointer', border:`1px solid ${selectedAdvId === adv.id ? 'var(--accent)' : 'var(--border)'}` }}>
                 <span style={{ fontFamily:'var(--font-mono)', fontSize:'0.625rem', color:'var(--accent)' }}>{adv.id}</span>
-                <span style={{ fontSize:'0.75rem', color:'var(--text-2)' }}>{adv.segmentName}</span>
+                <span style={{ fontSize:'0.75rem', color:'var(--ink-2)' }}>{adv.segmentName}</span>
                 <span className={`badge ${adv.status === 'applied' ? 'badge-success' : adv.status === 'undone' ? 'badge-muted' : 'badge-info'}`}>{adv.status}</span>
               </div>
             ))}
@@ -276,17 +285,18 @@ export function AnalyticsView() {
   const topBottlenecks         = [...trafficSegments].sort((a,b) => b.congestionScore - a.congestionScore).slice(0,5);
   const maxOdVol               = Math.max(...odFlows.map((f) => f.volume), 1);
 
-  function sc(v: number) { return v > 85 ? 'var(--danger)' : v > 65 ? 'var(--warn)' : 'var(--ok)'; }
+  function _sc(v: number) { return congestionHex(v); }
+  void _sc;
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', height:'100%', overflow:'hidden', background:'var(--bg)' }}>
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', overflow:'hidden', background:'var(--canvas)' }}>
       {/* Tabs */}
-      <div style={{ flexShrink:0, display:'flex', borderBottom:'1px solid var(--border)', padding:'0 20px', background:'var(--bg)' }}>
+      <div style={{ flexShrink:0, display:'flex', borderBottom:'1px solid var(--border)', padding:'0 20px', background:'var(--canvas)' }}>
         {TABS.map(({ id, label, icon:Icon }) => {
           const active = tab === id;
           return (
             <button key={id} onClick={() => setTab(id)}
-              style={{ display:'flex', alignItems:'center', gap:6, padding:'12px 14px', border:'none', background:'transparent', cursor:'pointer', fontSize:'0.8125rem', fontWeight:active?600:400, color:active?'var(--accent)':'var(--text-muted)', borderBottom:`2px solid ${active?'var(--accent)':'transparent'}`, marginBottom:-1, transition:'all 0.13s', whiteSpace:'nowrap' }}>
+              style={{ display:'flex', alignItems:'center', gap:6, padding:'12px 14px', border:'none', background:'transparent', cursor:'pointer', fontSize:'0.8125rem', fontWeight:active?600:400, color:active?'var(--accent)':'var(--muted)', borderBottom:`2px solid ${active?'var(--accent)':'transparent'}`, marginBottom:-1, transition:'all 0.13s', whiteSpace:'nowrap' }}>
               <Icon size={13} strokeWidth={active?2.2:1.8} />
               {label}
               {id === 'advisor' && <span style={{ marginLeft:2, fontSize:'0.5rem', background:'var(--accent)', color:'#05080e', padding:'1px 4px', borderRadius:999, fontWeight:700 }}>AI</span>}
@@ -327,18 +337,19 @@ export function AnalyticsView() {
                     <tbody>
                       {trafficSegments.map(seg => (
                         <tr key={seg.id}>
-                          <td style={{ color:'var(--text-2)', fontSize:'0.875rem' }}>{seg.name}</td>
+                          <td style={{ color:'var(--ink-2)', fontSize:13 }}>{seg.name}</td>
                           <td>
                             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                              <div style={{ width:60, height:4, background:'var(--surface-2)', borderRadius:999 }}>
-                                <div style={{ height:'100%', width:`${seg.congestionScore}%`, background:sc(seg.congestionScore), borderRadius:999 }} />
+                              {/* Bar scales with score out of 100, coloured by severity */}
+                              <div style={{ width:72, height:5, background:'var(--surface-3)', borderRadius:999 }}>
+                                <div style={{ height:'100%', width:`${seg.congestionScore}%`, background:congestionHex(seg.congestionScore), borderRadius:999, transition:'width 0.4s' }} />
                               </div>
-                              <span style={{ fontFamily:'var(--font-mono)', fontWeight:700, color:sc(seg.congestionScore), fontSize:'0.8125rem' }}>{seg.congestionScore}</span>
+                              <span className="mono tabnum" style={{ fontWeight:700, color:congestionHex(seg.congestionScore), fontSize:13 }}>{seg.congestionScore}</span>
                             </div>
                           </td>
-                          <td style={{ fontFamily:'var(--font-mono)', fontSize:'0.8125rem', color:'var(--text-2)' }}>{seg.vehicleDensity}/km</td>
-                          <td style={{ fontFamily:'var(--font-mono)', fontSize:'0.8125rem', color:'var(--text-2)' }}>{seg.avgSpeed} km/h</td>
-                          <td style={{ fontFamily:'var(--font-mono)', fontSize:'0.8125rem', color:seg.delay>15?'var(--warn)':'var(--text-muted)', fontWeight:seg.delay>15?700:400 }}>+{seg.delay}min</td>
+                          <td className="mono tabnum" style={{ fontSize:13, color:'var(--ink-2)' }}>{seg.vehicleDensity}/km</td>
+                          <td className="mono tabnum" style={{ fontSize:13, color:'var(--ink-2)' }}>{seg.avgSpeed} km/h</td>
+                          <td className="mono tabnum" style={{ fontSize:13, color:seg.delay>15?'var(--warn)':'var(--muted)', fontWeight:seg.delay>15?600:400 }}>+{seg.delay}m</td>
                         </tr>
                       ))}
                     </tbody>
@@ -362,7 +373,7 @@ export function AnalyticsView() {
                         <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
                         <XAxis dataKey="hour" tick={{ fill:TICK, fontSize:10 }} axisLine={false} tickLine={false} />
                         <YAxis tick={{ fill:TICK, fontSize:10 }} unit="m" axisLine={false} tickLine={false} />
-                        <Tooltip {...TT} formatter={(v: number) => [`${v} min`]} />
+                        <Tooltip {...TT} formatter={(v) => [`${v} min`]} />
                         <Legend wrapperStyle={{ fontSize:11, paddingTop:4 }} />
                         <Line type="monotone" dataKey="scheduled" stroke="var(--ok)" strokeDasharray="5 3" dot={false} name="Scheduled" strokeWidth={1.5} />
                         <Line type="monotone" dataKey="actual"    stroke="var(--warn)" dot={false}             name="Actual"     strokeWidth={2}   />
@@ -418,18 +429,18 @@ export function AnalyticsView() {
                 <div>
                   {topBottlenecks.map((seg, i) => (
                     <div key={seg.id} style={{ display:'flex', alignItems:'center', gap:16, padding:'14px 18px', borderBottom:i<4?'1px solid var(--border)':undefined }}>
-                      <div style={{ width:30, height:30, borderRadius:8, background:i===0?'var(--danger-subtle)':'var(--surface-2)', border:`1px solid ${i===0?'rgba(255,92,92,0.3)':'var(--border)'}`, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-mono)', fontWeight:700, fontSize:'0.875rem', color:i===0?'var(--danger)':'var(--text-muted)', flexShrink:0 }}>
+                      <div style={{ width:30, height:30, borderRadius:8, background:i===0?'var(--danger-subtle)':'var(--surface-2)', border:`1px solid ${i===0?'rgba(255,92,92,0.3)':'var(--border)'}`, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-mono)', fontWeight:700, fontSize:'0.875rem', color:i===0?'var(--danger)':'var(--muted)', flexShrink:0 }}>
                         {i+1}
                       </div>
                       <div style={{ flex:1 }}>
-                        <div style={{ fontSize:'0.9375rem', fontWeight:600, color:'var(--text)', marginBottom:3 }}>{seg.name}</div>
-                        <div style={{ display:'flex', gap:14, fontSize:'0.75rem', color:'var(--text-muted)', flexWrap:'wrap' }}>
+                        <div style={{ fontSize:'0.9375rem', fontWeight:600, color:'var(--ink)', marginBottom:3 }}>{seg.name}</div>
+                        <div style={{ display:'flex', gap:14, fontSize:'0.75rem', color:'var(--muted)', flexWrap:'wrap' }}>
                           <span>{seg.vehicleDensity} veh/km</span><span>{seg.avgSpeed} km/h avg</span>
                           <span style={{ color:'var(--warn)', fontWeight:600 }}>+{seg.delay}min delay</span>
                         </div>
                       </div>
                       <div style={{ textAlign:'right', flexShrink:0 }}>
-                        <div style={{ fontFamily:'var(--font-display)', fontWeight:700, fontSize:'1.5rem', color:sc(seg.congestionScore), lineHeight:1 }}>{seg.congestionScore}</div>
+                        <div style={{ fontFamily:'var(--font-ui)', fontWeight:700, fontSize:'1.5rem', color:congestionHex(seg.congestionScore), lineHeight:1 }}>{seg.congestionScore}</div>
                         <div style={{ fontSize:'0.5rem', color:'var(--surface-3)', textTransform:'uppercase', marginTop:2 }}>score</div>
                       </div>
                     </div>
@@ -441,7 +452,7 @@ export function AnalyticsView() {
                 <div>
                   {odFlows.slice(0,6).map((flow, i) => (
                     <div key={i} style={{ display:'flex', alignItems:'center', gap:14, padding:'10px 18px', borderBottom:i<5?'1px solid var(--border)':undefined }}>
-                      <div style={{ flex:1, fontSize:'0.875rem', color:'var(--text-2)' }}>
+                      <div style={{ flex:1, fontSize:'0.875rem', color:'var(--ink-2)' }}>
                         <strong>{flow.from}</strong><span style={{ color:'var(--surface-3)', margin:'0 6px' }}>→</span><strong>{flow.to}</strong>
                       </div>
                       <div style={{ flex:1 }}>

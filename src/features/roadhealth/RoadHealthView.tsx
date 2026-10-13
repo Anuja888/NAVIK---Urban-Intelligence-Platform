@@ -6,10 +6,10 @@ import { useNavikStore } from '../../store/navikStore';
 import type { RoadHealthSegment } from '../../types';
 
 function rhiColor(rhi: number): string {
-  if (rhi >= 70) return 'var(--ok)';
-  if (rhi >= 50) return 'var(--warn)';
-  if (rhi >= 30) return '#ff8c42';
-  return 'var(--danger)';
+  if (rhi >= 70) return '#15803D';
+  if (rhi >= 50) return '#A16207';
+  if (rhi >= 30) return '#C2410C';
+  return '#B42318';
 }
 
 function rhiLabel(rhi: number): string {
@@ -20,9 +20,9 @@ function rhiLabel(rhi: number): string {
 }
 
 const TOOLTIP_STYLE = {
-  contentStyle: { background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, fontFamily: 'IBM Plex Sans' },
-  labelStyle:   { color: 'var(--text-2)', fontSize: 11 },
-  cursor:       { fill: 'rgba(61,213,243,0.05)' },
+  contentStyle: { background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12, fontFamily: '"Plus Jakarta Sans", sans-serif' },
+  labelStyle:   { color: '#64748B', fontSize: 11 },
+  cursor:       { fill: 'rgba(15,118,110,0.05)' },
 };
 
 export function RoadHealthView() {
@@ -62,28 +62,39 @@ export function RoadHealthView() {
     return f === 'fresh' ? 'var(--ok)' : f === 'stale' ? 'var(--warn)' : 'var(--danger)';
   }
 
-  function suggestBus(seg: RoadHealthSegment) {
+  function suggestBus(_seg: RoadHealthSegment) {
     const near = buses.find((b) => b.status === 'active');
     return near?.id;
   }
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg)' }}>
-      {/* Header */}
-      <div style={{ flexShrink: 0, padding: '12px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <Activity size={16} color="var(--accent)" />
-        <h2 style={{ fontSize: '0.9375rem', marginRight: 'auto' }}>Road Health Intelligence</h2>
-        {[
-          { label: 'Avg RHI',        value: `${avgRHI}/100`,     color: rhiColor(avgRHI) },
-          { label: 'Critical Segs',  value: criticalCount,        color: criticalCount > 0 ? 'var(--danger)' : 'var(--ok)' },
-          { label: 'Unscanned >6h',  value: unscanCount,          color: unscanCount > 0 ? 'var(--warn)' : 'var(--ok)' },
-          { label: 'High Risk 30d',  value: highRiskCount,         color: highRiskCount > 0 ? 'var(--danger)' : 'var(--ok)' },
-        ].map(({ label, value, color }) => (
-          <div key={label} style={{ textAlign: 'center' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.125rem', color }}>{value}</div>
-            <div style={{ fontSize: '0.5625rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
-          </div>
-        ))}
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--canvas)' }}>
+      {/* Header — two rows so KPIs never overlap title */}
+      <div style={{ flexShrink: 0, background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
+        {/* Row 1: title */}
+        <div style={{ padding: '12px 20px 8px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Activity size={15} color="#0F766E" />
+          <h2 style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>Road Health Intelligence</h2>
+        </div>
+        {/* Row 2: KPI chips — no overlap at any width */}
+        <div style={{ display: 'flex', gap: 8, padding: '0 20px 10px', flexWrap: 'wrap' }}>
+          {[
+            { label: 'Avg RHI',       value: `${avgRHI}/100`, hex: rhiColor(avgRHI) },
+            { label: 'Critical',      value: String(criticalCount), hex: criticalCount > 0 ? '#B42318' : '#15803D' },
+            { label: 'Unscanned >6h', value: String(unscanCount),  hex: unscanCount > 0 ? '#A16207' : '#15803D' },
+            { label: 'High risk 30d', value: String(highRiskCount), hex: highRiskCount > 0 ? '#B42318' : '#15803D' },
+          ].map(({ label, value, hex }) => (
+            <div key={label} style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              padding: '5px 12px', borderRadius: 8,
+              background: 'var(--surface-2)', border: '1px solid var(--border)',
+              minWidth: 80,
+            }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 16, color: hex, lineHeight: 1.2 }}>{value}</span>
+              <span style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, whiteSpace: 'nowrap' }}>{label}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
@@ -94,19 +105,19 @@ export function RoadHealthView() {
             <div className="panel-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                 <Cloud size={13} color="var(--info)" />
-                <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>Monsoon Intensity</span>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>Monsoon Intensity</span>
               </div>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8125rem', fontWeight: 700, color: 'var(--info)' }}>{monsoonMM}mm</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: 'var(--info)' }}>{monsoonMM}mm</span>
             </div>
             <div style={{ padding: '14px' }}>
               <input type="range" min={0} max={150} value={monsoonMM} onChange={(e) => setMonsoonMM(Number(e.target.value))}
                 style={{ width: '100%', accentColor: 'var(--info)', cursor: 'pointer', marginBottom: 8 }} />
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 {[0, 50, 100, 150].map((v) => (
-                  <span key={v} style={{ fontSize: '0.5625rem', color: 'var(--text-muted)' }}>{v}mm</span>
+                  <span key={v} style={{ fontSize: 11, color: 'var(--muted)' }}>{v}mm</span>
                 ))}
               </div>
-              <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: 8 }}>
+              <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>
                 Adjusting monsoon intensity recalculates 30-day failure probability and predicted pothole count for all segments.
               </div>
             </div>
@@ -115,15 +126,15 @@ export function RoadHealthView() {
           {/* RHI Bar chart */}
           <div className="panel">
             <div className="panel-header">
-              <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>Road Health Index (RHI)</span>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>Road Health Index (RHI)</span>
             </div>
             <div style={{ padding: '8px 0' }}>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={chartData} layout="vertical" barSize={12}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" horizontal={false} />
-                  <XAxis type="number" domain={[0, 100]} tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis dataKey="name" type="category" tick={{ fill: 'var(--text-2)', fontSize: 9 }} width={80} axisLine={false} tickLine={false} />
-                  <Tooltip {...TOOLTIP_STYLE} formatter={(v: number) => [`${v}/100`, 'RHI']} />
+                  <XAxis type="number" domain={[0, 100]} tick={{ fill: 'var(--muted)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis dataKey="name" type="category" tick={{ fill: 'var(--ink-2)', fontSize: 9 }} width={80} axisLine={false} tickLine={false} />
+                  <Tooltip {...TOOLTIP_STYLE} formatter={(v) => [`${v}/100`, 'RHI']} />
                   <Bar dataKey="rhi" radius={[0, 4, 4, 0]}>
                     {chartData.map((entry, i) => (
                       <Cell key={i} fill={rhiColor(entry.rhi)} />
@@ -139,7 +150,7 @@ export function RoadHealthView() {
         <div style={{ flex: 1, overflow: 'auto', padding: '16px 20px' }}>
           {/* Sort bar */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Sort by:</span>
+            <span style={{ fontSize: 12, color: 'var(--muted)' }}>Sort by:</span>
             {[
               { key: 'rhi',      label: 'RHI (worst first)' },
               { key: 'failure',  label: '30d Failure Risk' },
@@ -162,17 +173,17 @@ export function RoadHealthView() {
                 style={{ background: 'var(--surface)', border: `1px solid ${seg.rhi < 30 ? 'rgba(255,92,92,0.3)' : 'var(--border)'}`, borderRadius: 12, padding: '14px 16px', marginBottom: 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, gap: 12, flexWrap: 'wrap' }}>
                   <div>
-                    <h4 style={{ fontSize: '0.9375rem', color: 'var(--text)', marginBottom: 2 }}>{seg.name}</h4>
+                    <h4 style={{ fontSize: 15, color: 'var(--ink)', marginBottom: 2 }}>{seg.name}</h4>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '0.6875rem', color: rc, fontWeight: 700, background: `${rc}12`, padding: '1px 7px', borderRadius: 999, border: `1px solid ${rc}25`, fontFamily: 'var(--font-mono)' }}>
+                      <span style={{ fontSize: 12, color: rc, fontWeight: 700, background: `${rc}12`, padding: '1px 7px', borderRadius: 999, border: `1px solid ${rc}25`, fontFamily: 'var(--font-mono)' }}>
                         RHI {seg.rhi} · {rhiLabel(seg.rhi)}
                       </span>
-                      <span style={{ fontSize: '0.6875rem', color: fc, fontWeight: 600, background: `${fc}12`, padding: '1px 7px', borderRadius: 999, border: `1px solid ${fc}25` }}>
+                      <span style={{ fontSize: 12, color: fc, fontWeight: 600, background: `${fc}12`, padding: '1px 7px', borderRadius: 999, border: `1px solid ${fc}25` }}>
                         <Clock size={9} style={{ verticalAlign: 'middle', marginRight: 3 } as React.CSSProperties} />
                         {seg.coverageFreshness === 'fresh' ? `<2h ago` : seg.coverageFreshness === 'stale' ? `${seg.hoursSinceLastScan.toFixed(1)}h ago` : `>${seg.hoursSinceLastScan.toFixed(0)}h`}
                       </span>
                       {seg.prePositionCrewRecommended && (
-                        <span style={{ fontSize: '0.6875rem', color: 'var(--danger)', background: 'var(--danger-subtle)', padding: '1px 7px', borderRadius: 999, border: '1px solid rgba(255,92,92,0.25)', fontWeight: 700 }}>
+                        <span style={{ fontSize: 12, color: 'var(--danger)', background: 'var(--danger-subtle)', padding: '1px 7px', borderRadius: 999, border: '1px solid rgba(255,92,92,0.25)', fontWeight: 700 }}>
                           ⚠ Pre-position recommended
                         </span>
                       )}
@@ -185,7 +196,7 @@ export function RoadHealthView() {
                         <div style={{ height: '100%', width: `${seg.rhi}%`, background: rc, borderRadius: 999, transition: 'width 0.5s' }} />
                       </div>
                     </div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.625rem', color: 'var(--text-muted)' }}>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)' }}>
                       30d fail: <span style={{ color: seg.failureProbability30d > 0.6 ? 'var(--danger)' : 'var(--warn)', fontWeight: 700 }}>
                         {Math.round(seg.failureProbability30d * 100)}%
                       </span>
@@ -196,15 +207,15 @@ export function RoadHealthView() {
                 {/* Metrics grid */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 12 }}>
                   {[
-                    { label: 'Defect/km', value: `${seg.defectDensity}`, color: 'var(--text-2)' },
-                    { label: 'Age',       value: `${seg.ageYears}y`,     color: 'var(--text-2)' },
+                    { label: 'Defect/km', value: `${seg.defectDensity}`, color: 'var(--ink-2)' },
+                    { label: 'Age',       value: `${seg.ageYears}y`,     color: 'var(--ink-2)' },
                     { label: 'Load',      value: seg.trafficLoad,         color: seg.trafficLoad === 'high' ? 'var(--danger)' : seg.trafficLoad === 'medium' ? 'var(--warn)' : 'var(--ok)' },
                     { label: 'Rain exp.', value: `${seg.rainExposure}/10`, color: 'var(--info)' },
                     { label: 'Pred. new', value: `${seg.predictedPotholeCount} holes`, color: seg.predictedPotholeCount > 2 ? 'var(--danger)' : 'var(--warn)' },
                   ].map(({ label, value, color }) => (
                     <div key={label} style={{ background: 'var(--surface-2)', borderRadius: 7, padding: '7px 8px', textAlign: 'center' }}>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', fontWeight: 700, color }}>{value}</div>
-                      <div style={{ fontSize: '0.5rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: 1 }}>{label}</div>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, color }}>{value}</div>
+                      <div style={{ fontSize: '0.5rem', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: 1 }}>{label}</div>
                     </div>
                   ))}
                 </div>
@@ -226,7 +237,7 @@ export function RoadHealthView() {
                     </button>
                   )}
                   {seg.failureProbability30d > 0.5 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.75rem', color: 'var(--danger)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--danger)' }}>
                       <AlertTriangle size={12} />
                       High failure risk — consider preventive patching
                     </div>

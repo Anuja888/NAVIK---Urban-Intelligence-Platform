@@ -8,7 +8,8 @@ const ICONS = {
   error:   XCircle,
   info:    Info,
 };
-const COLORS = {
+
+const ICON_COLORS = {
   success: 'var(--ok)',
   warning: 'var(--warn)',
   error:   'var(--danger)',
@@ -19,37 +20,39 @@ export function ToastContainer() {
   const toasts      = useNavikStore((s) => s.toasts);
   const removeToast = useNavikStore((s) => s.removeToast);
 
+  // Only show the most recent 1 toast (spec: max 1 visible)
+  const visible = toasts.slice(-1);
+
   return (
-    <div className="toast-container" role="region" aria-label="Notifications">
+    <div className="toast-container" role="region" aria-label="Notifications" aria-live="polite">
       <AnimatePresence>
-        {toasts.map((toast) => {
+        {visible.map((toast) => {
           const Icon  = ICONS[toast.type];
-          const color = COLORS[toast.type];
+          const color = ICON_COLORS[toast.type];
           return (
             <motion.div
               key={toast.id}
               className={`toast toast-${toast.type === 'error' ? 'error' : toast.type}`}
-              initial={{ opacity:0, x:40, scale:0.96 }}
-              animate={{ opacity:1, x:0,  scale:1 }}
-              exit={{ opacity:0, x:40, scale:0.96 }}
-              transition={{ type:'spring', stiffness:360, damping:32 }}
+              initial={{ opacity: 0, y: -8, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0,  scale: 1 }}
+              exit={{    opacity: 0, y: -8, scale: 0.97 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
               role="alert"
-              aria-live="polite"
             >
-              <Icon size={16} strokeWidth={2} style={{ color, flexShrink:0, marginTop:1 } as React.CSSProperties} />
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontWeight:600, fontSize:'0.875rem', color:'var(--text)' }}>{toast.title}</div>
+              <Icon size={15} strokeWidth={2} style={{ color, flexShrink: 0, marginTop: 1 } as React.CSSProperties} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--ink)', lineHeight: 1.4 }}>{toast.title}</div>
                 {toast.message && (
-                  <div style={{ fontSize:'0.75rem', color:'var(--text-muted)', marginTop:2, lineHeight:1.4 }}>{toast.message}</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2, lineHeight: 1.4 }}>{toast.message}</div>
                 )}
               </div>
               <button
                 className="btn btn-ghost btn-icon btn-xs"
                 onClick={() => removeToast(toast.id)}
-                aria-label="Dismiss notification"
-                style={{ flexShrink:0, pointerEvents:'all' }}
+                aria-label="Dismiss"
+                style={{ flexShrink: 0, color: 'var(--muted)', pointerEvents: 'all' }}
               >
-                <X size={13} />
+                <X size={12} />
               </button>
             </motion.div>
           );

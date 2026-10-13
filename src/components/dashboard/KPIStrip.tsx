@@ -1,301 +1,179 @@
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Bus, AlertTriangle, Wrench, Clock,
-  ChevronRight, Activity, HardHat, Zap,
-  TrendingUp, TrendingDown, Minus,
-} from 'lucide-react';
+import { Bus, AlertTriangle, Clock, Wrench, ChevronRight } from 'lucide-react';
 import { useNavikStore } from '../../store/navikStore';
-import { severityColor, incidentTypeLabel, formatRelative } from '../ui/helpers';
-import { Sparkline } from '../ui/Sparkline';
+import { incidentTypeLabel, severityLabel, formatRelative } from '../ui/helpers';
+import type { Severity } from '../../types';
 
-// ── Animated number count-up ───────────────────────────────
-function AnimatedNumber({ value, delay = 0 }: { value: number; delay?: number }) {
+// Severity dot colour using real hex (no CSS vars in SVG/canvas contexts)
+const SEV_HEX: Record<Severity, string> = {
+  critical: '#B42318',
+  high:     '#C2410C',
+  medium:   '#A16207',
+  low:      '#15803D',
+};
+const SEV_HEX_DARK: Record<Severity, string> = {
+  critical: '#FDA29B',
+  high:     '#FDBA74',
+  medium:   '#FCD34D',
+  low:      '#6EE7B7',
+};
+function useSevHex() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  return isDark ? SEV_HEX_DARK : SEV_HEX;
+}
+
+// ── Animated count-up ─────────────────────────────────────
+function CountUp({ to, delay = 0 }: { to: number; delay?: number }) {
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     let start: number | null = null;
-    const dur = 1100;
-    function step(ts: number) {
-      if (!start) start = ts;
-      const p = Math.min((ts - start) / dur, 1);
-      const e = 1 - Math.pow(1 - p, 3);
-      el!.textContent = String(Math.round(value * e));
-      if (p < 1) requestAnimationFrame(step);
-    }
-    const tid = setTimeout(() => requestAnimationFrame(step), delay);
+    const dur = 900;
+    const tid = setTimeout(() => {
+      requestAnimationFrame(function step(ts) {
+        if (!start) start = ts;
+        const p = Math.min((ts - start) / dur, 1);
+        const e = 1 - Math.pow(1 - p, 3);
+        el.textContent = String(Math.round(to * e));
+        if (p < 1) requestAnimationFrame(step);
+      });
+    }, delay);
     return () => clearTimeout(tid);
-  }, [value, delay]);
-  return <span ref={ref}>0</span>;
+  }, [to, delay]);
+  return <span ref={ref} className="tabnum">0</span>;
 }
 
-// ── Delta indicator ────────────────────────────────────────
-function Delta({ delta, unit = '' }: { delta: number; unit?: string }) {
-  if (delta === 0) return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: '0.625rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-      <Minus size={9} /> same
-    </span>
-  );
-  const positive = delta > 0;
-  const color    = positive ? 'var(--ok)' : 'var(--danger)';
-  const Icon     = positive ? TrendingUp : TrendingDown;
-  return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: '0.625rem', color, fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-      <Icon size={9} />
-      {positive ? '+' : ''}{delta}{unit}
-    </span>
-  );
-}
-
-// ── KPI card with sparkline ────────────────────────────────
-function KPICard({ label, value, unit, color, icon: Icon, delay = 0, sparkData, delta, deltaUnit }: {
+// ── Single KPI tile ───────────────────────────────────────
+function KPITile({ label, value, unit, icon: Icon, delay }: {
   label: string; value: number; unit?: string;
-  color: string;
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
+  icon: React.ComponentType<{ size?: number; strokeWidth?: number; color?: string }>;
   delay?: number;
-  sparkData: number[];
-  delta: number;
-  deltaUnit?: string;
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      className="kpi-tile"
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: delay / 1000, ease: [0.4, 0, 0.2, 1] }}
-      style={{
-        flex: '1 1 0', minWidth: 0,
-        padding: '10px 12px',
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 10,
-        boxShadow: 'var(--shadow-sm)',
-        display: 'flex', flexDirection: 'column', gap: 6,
-        position: 'relative', overflow: 'hidden',
-      }}
+      transition={{ duration: 0.25, delay: (delay ?? 0) / 1000 }}
+      style={{ flex: '1 1 0', minWidth: 0 }}
     >
-      {/* Subtle color accent in corner */}
-      <div style={{
-        position: 'absolute', top: -10, right: -10,
-        width: 44, height: 44, borderRadius: '50%',
-        background: color, opacity: 0.08, filter: 'blur(10px)',
-        pointerEvents: 'none',
-      }} />
-
-      {/* Label + icon */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{
-          fontSize: '0.8125rem',    /* 13px — meets minimum */
-          fontWeight: 600,
-          color: 'var(--text-2)',   /* adequate contrast on both themes */
-        }}>
-          {label}
-        </span>
-        <div style={{
-          width: 22, height: 22, borderRadius: 6,
-          background: `${color}18`,
-          border: `1px solid ${color}28`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Icon size={11} strokeWidth={2} style={{ color } as React.CSSProperties} />
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <span className="kpi-label">{label}</span>
+        <Icon size={14} strokeWidth={1.8} color="var(--muted)" />
       </div>
-
-      {/* Value + sparkline */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 4 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
-          <span style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '1.625rem', fontWeight: 700,
-            letterSpacing: '-0.04em', lineHeight: 1, color,
-          }}>
-            <AnimatedNumber value={value} delay={delay} />
-          </span>
-          {unit && (
-            <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-              {unit}
-            </span>
-          )}
-        </div>
-        <Sparkline data={sparkData} color={color} width={52} height={20} />
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+        <span className="kpi-value"><CountUp to={value} delay={delay} /></span>
+        {unit && <span style={{ fontSize: 13, color: 'var(--muted)' }}>{unit}</span>}
       </div>
-
-      {/* Delta vs prev hour */}
-      <Delta delta={delta} unit={deltaUnit} />
     </motion.div>
   );
 }
 
-// ── Live feed row ──────────────────────────────────────────
-function FeedRow({ incidentId }: { incidentId: string }) {
+// ── Needs-attention row ───────────────────────────────────
+function AttentionRow({ incidentId }: { incidentId: string }) {
   const incident       = useNavikStore((s) => s.incidents.find((i) => i.id === incidentId));
   const selectIncident = useNavikStore((s) => s.selectIncident);
   const newIds         = useNavikStore((s) => s.newIncidentIds);
-  if (!incident) return null;
+  const sevHex         = useSevHex();
 
-  const isNew    = newIds.has(incidentId);
-  const dotColor = severityColor(incident.severity);
+  if (!incident) return null;
+  const isNew = newIds.has(incidentId);
 
   return (
     <motion.button
       layout
-      initial={{ opacity: 0, y: -5 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
+      initial={{ opacity: 0, x: 8 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, height: 0 }}
+      transition={{ duration: 0.18 }}
       onClick={() => selectIncident(incident.id)}
+      className={`inc-row inc-row-${incident.severity}${isNew ? ' inc-row-new' : ''}`}
       style={{
-        width: '100%',
-        background: isNew
-          ? 'color-mix(in srgb, var(--danger) 5%, var(--surface))'
-          : 'transparent',
-        border: 'none',
-        borderBottom: '1px solid var(--border-subtle)',
-        padding: '8px 12px',
-        cursor: 'pointer',
-        textAlign: 'left',
-        display: 'flex', alignItems: 'center', gap: 8,
-        transition: 'background 0.12s',
+        width: '100%', border: 'none', background: 'transparent',
+        borderBottom: '1px solid var(--border)',
+        padding: '10px 16px 10px 20px',
+        cursor: 'pointer', textAlign: 'left',
+        display: 'flex', alignItems: 'center', gap: 10,
+        transition: 'background 0.1s',
       }}
       onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-2)'; }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = isNew
-          ? 'color-mix(in srgb, var(--danger) 5%, var(--surface))'
-          : 'transparent';
-      }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
     >
-      {/* Severity dot with optional pulse */}
-      <div style={{ position: 'relative', flexShrink: 0, width: 8, height: 8 }}>
-        <div style={{
-          width: 8, height: 8, borderRadius: '50%',
-          background: dotColor,
-          boxShadow: `0 0 4px ${dotColor}`,
-        }} />
-        {isNew && (
-          <div style={{
-            position: 'absolute', inset: -3, borderRadius: '50%',
-            border: `1.5px solid ${dotColor}`,
-            animation: 'pulse-ring 1.5s ease-out infinite',
-          }} />
-        )}
-      </div>
-
+      <div style={{ width: 8, height: 8, borderRadius: '50%', background: sevHex[incident.severity], flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
-          <span style={{
-            fontSize: '0.75rem', fontWeight: 600,
-            color: 'var(--text)',
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>
-            {incidentTypeLabel(incident.type)}
-          </span>
-          <span style={{
-            fontSize: '0.625rem',
-            color: 'var(--text-muted)',
-            fontFamily: 'var(--font-mono)',
-            flexShrink: 0,
-          }}>
-            {formatRelative(incident.timestamp)}
-          </span>
+        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {incidentTypeLabel(incident.type)}
         </div>
-        <div style={{
-          fontSize: '0.6875rem', color: 'var(--text-muted)',
-          marginTop: 1,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>
-          {incident.locationLabel}
+        <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {incident.locationLabel} · {formatRelative(incident.timestamp)}
         </div>
       </div>
-
-      <ChevronRight size={11} style={{ color: 'var(--text-dim)', flexShrink: 0 } as React.CSSProperties} />
+      <span style={{ fontSize: 11, fontWeight: 500, color: sevHex[incident.severity], flexShrink: 0 }}>
+        {severityLabel(incident.severity)}
+      </span>
+      <ChevronRight size={12} color="var(--muted)" style={{ flexShrink: 0 }} />
     </motion.button>
   );
 }
 
-// ── Deterministic fake sparkline (last 8 hours trend) ─────
-function makeSparkData(base: number, variance: number, seed: number): number[] {
-  const pts: number[] = [];
-  let v = base * 0.8;
-  for (let i = 0; i < 8; i++) {
-    // simple LCG jitter
-    const h = ((seed * 1664525 + i * 22695477) & 0x7fffffff) / 0x7fffffff;
-    v = Math.max(0, v + (h - 0.5) * variance * 2);
-    pts.push(Math.round(v));
-  }
-  pts.push(base); // current value last
-  return pts;
-}
-
-// ── Main KPIStrip ──────────────────────────────────────────
+// ── Main KPIStrip ─────────────────────────────────────────
 export function KPIStrip() {
   const kpis      = useNavikStore((s) => s.kpis);
   const incidents = useNavikStore((s) => s.incidents);
 
-  const recentIds = useMemo(() =>
-    incidents
-      .slice()
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, 15)
-      .map((i) => i.id),
-    [incidents]
-  );
-
-  // Sparklines — deterministic fake history, last point = current
-  const busSparkData  = makeSparkData(kpis.activeBuses,     4,  1);
-  const incSparkData  = makeSparkData(kpis.liveIncidents,   3,  2);
-  const delSparkData  = makeSparkData(kpis.avgRouteDelay,   5,  3);
-  const defSparkData  = makeSparkData(kpis.defectsPending,  3,  4);
-  const woSparkData   = makeSparkData(kpis.workOrdersOpen,  2,  5);
-  const bwSparkData   = makeSparkData(Math.round(kpis.bandwidthSavedGB), 8, 6);
-
-  // Delta = diff vs hour-ago (second-to-last point)
-  const d = (arr: number[]) => arr[arr.length - 1] - arr[arr.length - 2];
+  // Top-5 unresolved by severity then recency
+  const topIds = incidents
+    .filter((i) => i.status !== 'resolved')
+    .sort((a, b) => {
+      const o = { critical: 0, high: 1, medium: 2, low: 3 };
+      return (o[a.severity] - o[b.severity]) ||
+             (new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    })
+    .slice(0, 5)
+    .map((i) => i.id);
 
   return (
-    <div style={{ padding: '8px 12px 0', display: 'flex', flexDirection: 'column', gap: 6 }}>
-      {/* KPI cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 6 }}>
-        <KPICard label="Active buses"    value={kpis.activeBuses}                      color="var(--ok)"     icon={Bus}          delay={0}   sparkData={busSparkData}  delta={d(busSparkData)}  />
-        <KPICard label="Live incidents"  value={kpis.liveIncidents}                    color="var(--danger)" icon={AlertTriangle} delay={60}  sparkData={incSparkData}  delta={d(incSparkData)}  />
-        <KPICard label="Avg delay"       value={kpis.avgRouteDelay} unit="m"            color="var(--warn)"   icon={Clock}         delay={120} sparkData={delSparkData}  delta={d(delSparkData)} deltaUnit="m" />
-        <KPICard label="Defects"         value={kpis.defectsPending}                   color="var(--info)"   icon={Wrench}        delay={180} sparkData={defSparkData}  delta={d(defSparkData)}  />
-        <KPICard label="Open WOs"        value={kpis.workOrdersOpen}                   color="var(--warn)"   icon={HardHat}       delay={240} sparkData={woSparkData}   delta={d(woSparkData)}   />
-        <KPICard label="BW saved"        value={Math.round(kpis.bandwidthSavedGB)} unit="GB" color="var(--accent)" icon={Zap}    delay={300} sparkData={bwSparkData}   delta={d(bwSparkData)}  deltaUnit="GB" />
-      </div>
+    <div style={{
+      padding: '12px 12px 0',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 8,
+      // DO NOT overlap map — this is a docked strip, map starts below
+    }}>
+      {/* 4 KPI tiles row */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <KPITile label="Active buses"   value={kpis.activeBuses}    icon={Bus}           delay={0}   />
+        <KPITile label="Open incidents" value={kpis.liveIncidents}  icon={AlertTriangle} delay={50}  />
+        <KPITile label="Avg delay"      value={kpis.avgRouteDelay} unit="min" icon={Clock}        delay={100} />
+        <KPITile label="Defects pending" value={kpis.defectsPending} icon={Wrench}        delay={150} />
 
-      {/* Live feed panel */}
-      <div style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 10,
-        boxShadow: 'var(--shadow-sm)',
-        overflow: 'hidden',
-      }}>
-        {/* Header */}
+        {/* Needs attention — right column */}
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 7,
-          padding: '7px 12px',
-          borderBottom: '1px solid var(--border)',
-          background: 'var(--surface-2)',
+          flex: '0 0 280px',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          maxHeight: 220,
         }}>
-          <Activity size={12} strokeWidth={2.5} style={{ color: 'var(--accent)' } as React.CSSProperties} />
-          <span style={{
-            fontSize: '0.8125rem',  /* ≥13px */
-            fontWeight: 600,
-            color: 'var(--text-2)',
-          }}>
-            Live feed
-          </span>
-          <span className="live-dot" style={{ marginLeft: 'auto' }} />
-        </div>
-
-        {/* Rows */}
-        <div style={{ maxHeight: 196, overflowY: 'auto' }}>
-          <AnimatePresence initial={false}>
-            {recentIds.map((id) => (
-              <FeedRow key={id} incidentId={id} />
-            ))}
-          </AnimatePresence>
+          <div style={{ padding: '9px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
+            <span className="live-dot" />
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>Needs attention</span>
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            <AnimatePresence initial={false}>
+              {topIds.map((id) => <AttentionRow key={id} incidentId={id} />)}
+            </AnimatePresence>
+            {topIds.length === 0 && (
+              <div style={{ padding: 20, textAlign: 'center', fontSize: 13, color: 'var(--muted)' }}>
+                No open incidents
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

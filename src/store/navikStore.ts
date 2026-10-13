@@ -7,12 +7,12 @@ import type {
   Bus, Incident, RoadDefect, SchoolZone, TrafficSegment,
   HeatPoint, ODFlowEntry, MapLayer, MapMode, AppView,
   IncidentStatus, DefectStatus, DashboardKPIs,
-  WorkOrder, WorkOrderStatus, RepairMethod,
+  WorkOrder, WorkOrderStatus,
   PursuitSession, PursuitSighting,
   EdgeNode, BandwidthPolicy,
   RoadHealthSegment,
   TrafficAdvisory, AdvisoryAction,
-  AgentActivityEntry, AgentId, Severity,
+  AgentActivityEntry,
 } from '../types';
 import {
   generateBuses, generateIncidents, generateDefects,

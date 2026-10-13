@@ -43,26 +43,28 @@ const GROUPS = ['main', 'intelligence', 'analytics'] as const;
 export function LeftRail({ collapsed, onToggleCollapse }: LeftRailProps) {
   const view       = useNavikStore((s) => s.view);
   const setView    = useNavikStore((s) => s.setView);
+  const closeDrawer = useNavikStore((s) => s.closeDrawer);
   const incidents  = useNavikStore((s) => s.incidents);
   const workOrders = useNavikStore((s) => s.workOrders);
 
   const newIncidentCount = incidents.filter((i) => i.status === 'new').length;
   const openWoCount      = workOrders.filter((w) => w.status === 'drafted' || w.status === 'approved').length;
 
-  // Sidebar is always deep navy regardless of theme, using --sidebar-* tokens
-  const railBg     = 'var(--sidebar-bg)';
-  const railBorder = 'var(--sidebar-border)';
+  function navigate(v: AppView) {
+    closeDrawer(); // BUG FIX: close drawer when switching views
+    setView(v);
+  }
 
   return (
     <motion.nav
       animate={{ width: collapsed ? 60 : 220 }}
-      transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+      transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
       style={{
         position: 'fixed',
         top: 0, left: 0, bottom: 0,
         flexShrink: 0,
-        background: railBg,
-        borderRight: `1px solid ${railBorder}`,
+        background: 'var(--sidebar-bg)',
+        borderRight: '1px solid var(--sidebar-border)',
         display: 'flex',
         flexDirection: 'column',
         zIndex: 300,
@@ -70,53 +72,35 @@ export function LeftRail({ collapsed, onToggleCollapse }: LeftRailProps) {
       }}
       aria-label="Main navigation"
     >
-      {/* ── Logo ── */}
+      {/* Logo */}
       <div style={{
-        height: 56,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        padding: collapsed ? '0 14px' : '0 14px',
-        borderBottom: `1px solid ${railBorder}`,
-        flexShrink: 0,
+        height: 52, flexShrink: 0,
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '0 14px',
+        borderBottom: '1px solid var(--sidebar-border)',
         justifyContent: collapsed ? 'center' : 'flex-start',
       }}>
         <div style={{
-          width: 32, height: 32,
-          background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%)',
-          borderRadius: 9,
+          width: 30, height: 30,
+          background: 'var(--accent)',
+          borderRadius: 8,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0,
-          boxShadow: '0 0 14px var(--accent-glow)',
         }}>
-          <Zap size={16} color="var(--accent-text)" strokeWidth={2.8} />
+          <Zap size={16} color="var(--accent-text)" strokeWidth={2.5} />
         </div>
         <AnimatePresence mode="wait">
           {!collapsed && (
-            <motion.div
-              key="brand"
-              initial={{ opacity: 0, x: -8 }}
+            <motion.div key="brand"
+              initial={{ opacity: 0, x: -6 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -8 }}
-              transition={{ duration: 0.14 }}
-              style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}
-            >
-              <div style={{
-                fontFamily: 'var(--font-display)',
-                fontWeight: 700,
-                fontSize: '1rem',
-                color: '#FFFFFF',          /* always white on navy */
-                letterSpacing: '-0.02em',
-                lineHeight: 1.1,
-              }}>
+              exit={{ opacity: 0, x: -6 }}
+              transition={{ duration: 0.13 }}
+              style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
+              <div style={{ fontWeight: 700, fontSize: 15, color: '#FFFFFF', letterSpacing: '-0.01em', lineHeight: 1.1 }}>
                 NAVIK
               </div>
-              <div style={{
-                fontSize: '0.625rem',
-                color: 'var(--sidebar-text)',
-                letterSpacing: '0.08em',
-                marginTop: 1,
-              }}>
+              <div style={{ fontSize: 11, color: 'var(--sidebar-text)', opacity: 0.7, marginTop: 1 }}>
                 Urban Intelligence
               </div>
             </motion.div>
@@ -124,34 +108,26 @@ export function LeftRail({ collapsed, onToggleCollapse }: LeftRailProps) {
         </AnimatePresence>
       </div>
 
-      {/* ── Nav items ── */}
+      {/* Nav — scrollable so all 10 items visible at 1366×768 */}
       <div style={{
         flex: 1,
         overflowY: 'auto',
         overflowX: 'hidden',
-        padding: '10px 6px',
+        padding: '8px 6px',
+        /* Custom scrollbar to match sidebar */
+        scrollbarWidth: 'thin',
+        scrollbarColor: '#334155 transparent',
       }}>
         {GROUPS.map((group) => {
           const items = NAV_ITEMS.filter((n) => n.group === group);
           return (
-            <div key={group} style={{ marginBottom: 6 }}>
-              {/* Group label — sentence case, adequate contrast */}
+            <div key={group} style={{ marginBottom: 4 }}>
               <AnimatePresence mode="wait">
                 {!collapsed && (
-                  <motion.div
-                    key={`grp-${group}`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.12 }}
-                    style={{
-                      fontSize: '0.6875rem',    /* 11px — readable */
-                      fontWeight: 600,
-                      color: 'var(--sidebar-group-label)', /* #7A9AB5 / #6B85A0 */
-                      padding: '8px 10px 4px',
-                      letterSpacing: '0.04em',
-                    }}
-                  >
+                  <motion.div key={`g-${group}`}
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    transition={{ duration: 0.1 }}
+                    style={{ fontSize: 11, fontWeight: 600, color: 'var(--sidebar-group-label)', padding: '8px 10px 3px', letterSpacing: '0.03em' }}>
                     {GROUP_LABELS[group]}
                   </motion.div>
                 )}
@@ -167,82 +143,58 @@ export function LeftRail({ collapsed, onToggleCollapse }: LeftRailProps) {
                 return (
                   <button
                     key={v}
-                    onClick={() => setView(v)}
+                    onClick={() => navigate(v)}
                     title={collapsed ? label : undefined}
                     aria-label={label}
                     aria-current={active ? 'page' : undefined}
                     style={{
                       position: 'relative',
-                      width: '100%',
-                      height: 38,
-                      borderRadius: 8,
-                      border: 'none',
+                      width: '100%', height: 36,
+                      borderRadius: 7, border: 'none',
                       background: active ? 'var(--sidebar-active-bg)' : 'transparent',
                       cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 9,
+                      display: 'flex', alignItems: 'center', gap: 9,
                       padding: collapsed ? '0' : '0 10px',
                       justifyContent: collapsed ? 'center' : 'flex-start',
-                      transition: 'background 0.13s',
-                      outline: 'none',
-                      marginBottom: 2,
+                      transition: 'background 0.12s',
+                      outline: 'none', marginBottom: 1,
                     }}
-                    onMouseEnter={(e) => {
-                      if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.07)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = active ? 'var(--sidebar-active-bg)' : 'transparent';
-                    }}
+                    onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = active ? 'var(--sidebar-active-bg)' : 'transparent'; }}
                   >
-                    {/* Active left border */}
+                    {/* 3px accent left border on active */}
                     {active && (
                       <motion.div
                         layoutId="nav-active"
                         style={{
-                          position: 'absolute',
-                          left: 0, top: '50%',
-                          width: 3, height: 22,
-                          borderRadius: '0 3px 3px 0',
+                          position: 'absolute', left: 0, top: '50%',
+                          width: 3, height: 20,
+                          borderRadius: '0 2px 2px 0',
                           background: 'var(--accent)',
                           transform: 'translateY(-50%)',
-                          boxShadow: '0 0 8px var(--accent-glow)',
                         }}
-                        transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 36 }}
                       />
                     )}
 
-                    <Icon
-                      size={16}
-                      strokeWidth={active ? 2.2 : 1.8}
-                      style={{
-                        flexShrink: 0,
-                        color: active
-                          ? 'var(--accent)'
-                          : 'var(--sidebar-text)',   /* #C5D3E3 — 4.5:1 on navy */
-                        transition: 'color 0.13s',
-                      } as React.CSSProperties}
-                    />
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', flexShrink: 0,
+                      color: active ? 'var(--accent)' : 'var(--sidebar-text)',
+                      transition: 'color 0.12s',
+                    }}>
+                      <Icon size={15} strokeWidth={active ? 2.2 : 1.8} />
+                    </span>
 
                     <AnimatePresence mode="wait">
                       {!collapsed && (
-                        <motion.span
-                          key={`lbl-${v}`}
-                          initial={{ opacity: 0, x: -6 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -6 }}
-                          transition={{ duration: 0.12 }}
+                        <motion.span key={`l-${v}`}
+                          initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -5 }} transition={{ duration: 0.11 }}
                           style={{
-                            fontSize: '0.875rem',
-                            fontWeight: active ? 600 : 400,
-                            color: active
-                              ? 'var(--sidebar-active-text)' /* #FFFFFF */
-                              : 'var(--sidebar-text)',       /* #C5D3E3 */
-                            whiteSpace: 'nowrap',
-                            flex: 1,
-                            textAlign: 'left',
-                          }}
-                        >
+                            fontSize: 13, fontWeight: active ? 600 : 400,
+                            color: active ? 'var(--sidebar-active-text)' : 'var(--sidebar-text)',
+                            whiteSpace: 'nowrap', flex: 1, textAlign: 'left',
+                          }}>
                           {label}
                         </motion.span>
                       )}
@@ -250,19 +202,14 @@ export function LeftRail({ collapsed, onToggleCollapse }: LeftRailProps) {
 
                     {badge !== undefined && (
                       <span style={{
-                        position: 'absolute',
-                        top: 5,
-                        right: collapsed ? 4 : 8,
-                        minWidth: 16, height: 16,
-                        borderRadius: 8,
-                        background: v === 'incidents' ? 'var(--danger)' : 'var(--warn)',
-                        color: '#FFFFFF',
-                        fontSize: '0.5rem',
-                        fontWeight: 700,
+                        position: 'absolute', top: 4,
+                        right: collapsed ? 3 : 7,
+                        minWidth: 15, height: 15, borderRadius: 7,
+                        background: v === 'incidents' ? '#B42318' : '#A16207',
+                        color: '#fff', fontSize: 10, fontWeight: 700,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         padding: '0 3px',
-                        border: `1.5px solid var(--sidebar-bg)`,
-                        fontFamily: 'var(--font-mono)',
+                        border: '1.5px solid var(--sidebar-bg)',
                       }}>
                         {badge > 99 ? '99+' : badge}
                       </span>
@@ -275,71 +222,37 @@ export function LeftRail({ collapsed, onToggleCollapse }: LeftRailProps) {
         })}
       </div>
 
-      {/* ── Bottom ── */}
-      <div style={{
-        padding: '8px 6px',
-        borderTop: `1px solid ${railBorder}`,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 4,
-      }}>
-        {/* Live indicator pill */}
+      {/* Bottom */}
+      <div style={{ padding: '6px 6px 8px', borderTop: '1px solid var(--sidebar-border)', flexShrink: 0 }}>
         <AnimatePresence mode="wait">
           {!collapsed && (
-            <motion.div
-              key="live-pill"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 4 }}
-              transition={{ duration: 0.14 }}
+            <motion.div key="live-pill"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              transition={{ duration: 0.12 }}
               style={{
                 display: 'flex', alignItems: 'center', gap: 7,
-                padding: '6px 10px',
-                borderRadius: 8,
-                background: 'rgba(52,211,153,0.10)',
-                border: '1px solid rgba(52,211,153,0.20)',
-                marginBottom: 2,
-              }}
-            >
+                padding: '5px 10px', borderRadius: 7, marginBottom: 4,
+                background: 'rgba(21,128,61,0.12)',
+                border: '1px solid rgba(21,128,61,0.22)',
+              }}>
               <span className="live-dot" />
-              <span style={{
-                fontSize: '0.6875rem',
-                fontFamily: 'var(--font-mono)',
-                fontWeight: 700,
-                color: 'var(--ok)',
-                letterSpacing: '0.03em',
-              }}>
-                Live
-              </span>
-              <span style={{
-                marginLeft: 'auto',
-                fontSize: '0.625rem',
-                fontFamily: 'var(--font-mono)',
-                color: 'var(--sidebar-text-dim)',
-              }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ok)' }}>Live</span>
+              <span style={{ marginLeft: 'auto', fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--sidebar-text-dim)' }}>
                 {new Date().toLocaleTimeString('en-IN', { hour12: false })}
               </span>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Collapse toggle */}
         <button
           onClick={() => onToggleCollapse(!collapsed)}
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            width: '100%',
-            padding: '6px 10px',
-            borderRadius: 8,
-            border: 'none',
-            background: 'transparent',
-            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 6,
+            width: '100%', padding: '5px 10px', borderRadius: 7,
+            border: 'none', background: 'transparent', cursor: 'pointer',
             color: 'var(--sidebar-text-dim)',
             justifyContent: collapsed ? 'center' : 'space-between',
-            transition: 'background 0.13s',
-            fontSize: '0.6875rem',
+            fontSize: 12, transition: 'background 0.12s',
           }}
           onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
@@ -347,18 +260,12 @@ export function LeftRail({ collapsed, onToggleCollapse }: LeftRailProps) {
         >
           <AnimatePresence mode="wait">
             {!collapsed && (
-              <motion.span
-                key="clbl"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.12 }}
-              >
+              <motion.span key="clbl" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.1 }}>
                 Collapse
               </motion.span>
             )}
           </AnimatePresence>
-          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          {collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
         </button>
       </div>
     </motion.nav>

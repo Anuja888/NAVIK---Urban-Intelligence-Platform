@@ -1,28 +1,22 @@
-// ── SeverityChip — icon + colored pill, no color-only reliance ──
+// SeverityChip — icon + text pill, never colour-only
 import { AlertCircle, AlertTriangle, AlertOctagon, Info } from 'lucide-react';
 import type { Severity } from '../../types';
 
-const SEV_CONFIG = {
-  low:      { icon: Info,         cls: 'sev-chip-low',      label: 'Low'      },
-  medium:   { icon: AlertCircle,  cls: 'sev-chip-medium',   label: 'Medium'   },
-  high:     { icon: AlertTriangle,cls: 'sev-chip-high',     label: 'High'     },
-  critical: { icon: AlertOctagon, cls: 'sev-chip-critical', label: 'Critical' },
+interface Props { severity: Severity; showLabel?: boolean; size?: number; }
+
+const CFG = {
+  low:      { Icon: Info,          cls: 'badge-low',      label: 'Low'      },
+  medium:   { Icon: AlertCircle,   cls: 'badge-medium',   label: 'Medium'   },
+  high:     { Icon: AlertTriangle, cls: 'badge-high',     label: 'High'     },
+  critical: { Icon: AlertOctagon,  cls: 'badge-critical', label: 'Critical' },
 } as const;
 
-interface SeverityChipProps {
-  severity: Severity;
-  /** Show text label alongside icon (default true) */
-  showLabel?: boolean;
-  size?: number;
-}
-
-export function SeverityChip({ severity, showLabel = true, size = 11 }: SeverityChipProps) {
-  const cfg = SEV_CONFIG[severity];
-  const Icon = cfg.icon;
+export function SeverityChip({ severity, showLabel = true, size = 11 }: Props) {
+  const { Icon, cls, label } = CFG[severity];
   return (
-    <span className={`sev-chip ${cfg.cls}`}>
-      <Icon size={size} strokeWidth={2.2} aria-hidden="true" />
-      {showLabel && cfg.label}
+    <span className={`badge ${cls}`} style={{ gap: 4 }}>
+      <Icon size={size} strokeWidth={2} aria-hidden />
+      {showLabel && label}
     </span>
   );
 }

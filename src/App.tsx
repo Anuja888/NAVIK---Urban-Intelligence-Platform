@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Sun, Moon, Maximize2, Menu, AlertOctagon, Wrench } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Sun, Moon, Maximize2, Menu, Bell, AlertOctagon, Wrench, X, Database } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { LeftRail }       from './components/layout/LeftRail';
 import { GISMap }         from './components/map/GISMap';
 import { DetailDrawer }   from './components/drawer/DetailDrawer';
@@ -16,9 +17,10 @@ import { EdgeNetworkView }from './features/edge/EdgeNetworkView';
 import { ToastContainer } from './components/ui/Toast';
 import { useSimulation }  from './hooks/useSimulation';
 import { useTheme }       from './hooks/useTheme';
-import { useNavikStore }  from './store/navikStore';
-import type { AppView }   from './types';
-import { severityColor, incidentTypeLabel } from './components/ui/helpers';
+import { useNavikStore } from './store/navikStore';
+import type { Toast } from './store/navikStore';
+import type { AppView }  from './types';
+import { incidentTypeLabel } from './components/ui/helpers';
 
 // ── Live clock ─────────────────────────────────────────────
 function LiveClock() {
@@ -26,21 +28,103 @@ function LiveClock() {
     new Date().toLocaleTimeString('en-IN', { hour12: false })
   );
   useEffect(() => {
-    const id = setInterval(
-      () => setTime(new Date().toLocaleTimeString('en-IN', { hour12: false })),
-      1000
-    );
+    const id = setInterval(() =>
+      setTime(new Date().toLocaleTimeString('en-IN', { hour12: false })), 1000);
     return () => clearInterval(id);
   }, []);
   return (
-    <span style={{
-      fontFamily: 'var(--font-mono)',
-      fontSize: '0.8125rem',
-      color: 'var(--text-muted)',
-      letterSpacing: '0.04em',
-    }}>
+    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--muted)', letterSpacing: '0.03em' }}>
       {time}
     </span>
+  );
+}
+
+// ── Toast history bell ─────────────────────────────────────
+function NotificationBell() {
+  const toasts  = useNavikStore((s) => s.toasts);
+  const [open, setOpen] = useState(false);
+  const [history, setHistory] = useState<Toast[]>([]);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Accumulate toast history
+  useEffect(() => {
+    if (toasts.length > 0) {
+      setHistory((h) => [...toasts, ...h].slice(0, 20));
+    }
+  }, [toasts]);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const unread = toasts.length;
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        className="btn btn-ghost btn-icon btn-sm"
+        onClick={() => setOpen(!open)}
+        aria-label="Notifications"
+        style={{ position: 'relative', color: 'var(--muted)' }}
+      >
+        <Bell size={15} />
+        {unread > 0 && (
+          <span style={{
+            position: 'absolute', top: 2, right: 2,
+            width: 8, height: 8, borderRadius: '50%',
+            background: 'var(--danger)',
+            border: '1.5px solid var(--surface)',
+          }} />
+        )}
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.13 }}
+            style={{
+              position: 'absolute', top: '100%', right: 0, marginTop: 6,
+              width: 320,
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 12,
+              boxShadow: 'var(--shadow-popover)',
+              zIndex: 9000,
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--ink)' }}>Notifications</span>
+              <button className="btn btn-ghost btn-icon btn-xs" onClick={() => setOpen(false)}><X size={12} /></button>
+            </div>
+            <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+              {history.length === 0 ? (
+                <div style={{ padding: 24, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>No notifications yet</div>
+              ) : (
+                history.slice(0, 12).map((t, i) => (
+                  <div key={i} style={{ padding: '9px 14px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 10 }}>
+                    <div style={{
+                      width: 6, height: 6, borderRadius: '50%', flexShrink: 0, marginTop: 5,
+                      background: t.type === 'error' ? 'var(--danger)' : t.type === 'warning' ? 'var(--warn)' : t.type === 'success' ? 'var(--ok)' : 'var(--info)',
+                    }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)', lineHeight: 1.4 }}>{t.title}</div>
+                      {t.message && <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{t.message}</div>}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -74,134 +158,52 @@ function FeatureContent({ view }: { view: AppView }) {
   }
 }
 
-// ── Top-bar KPI pill ───────────────────────────────────────
-function TopBarKPI({ label, value, color, badge }: {
-  label: string; value: string | number; color: string; badge?: number;
-}) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 5, position: 'relative' }}>
-      <span style={{
-        fontSize: '0.6875rem',
-        color: 'var(--sidebar-text-dim)',
-        fontWeight: 500,
-      }}>
-        {label}
-      </span>
-      <span style={{
-        fontFamily: 'var(--font-display)',
-        fontWeight: 700,
-        fontSize: '0.9375rem',
-        color,
-        letterSpacing: '-0.02em',
-      }}>
-        {value}
-      </span>
-      {badge !== undefined && (
-        <span style={{
-          position: 'absolute', top: -6, right: -8,
-          background: 'var(--danger)',
-          color: 'var(--text-invert)',
-          fontSize: '0.5rem',
-          fontWeight: 700,
-          width: 14, height: 14,
-          borderRadius: '50%',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          border: '1.5px solid var(--bg)',
-        }}>
-          {badge > 9 ? '9+' : badge}
-        </span>
-      )}
-    </div>
-  );
-}
-
-// ── Next Best Action banner ────────────────────────────────
-function NextBestActionBanner() {
+// ── NBA banner — slim, dismissible, critical only ──────────
+function NBABanner() {
   const incidents            = useNavikStore((s) => s.incidents);
   const updateIncidentStatus = useNavikStore((s) => s.updateIncidentStatus);
   const addToast             = useNavikStore((s) => s.addToast);
   const selectIncident       = useNavikStore((s) => s.selectIncident);
+  const [dismissed, setDismissed] = useState<string | null>(null);
 
-  // Top-priority unresolved incident: critical/high + new/under_review
   const top = incidents
-    .filter((i) => i.status !== 'resolved' && i.status !== 'dispatched')
+    .filter((i) => i.status !== 'resolved' && i.status !== 'dispatched' && (i.severity === 'critical' || i.severity === 'high'))
     .sort((a, b) => {
-      const sevOrder = { critical: 0, high: 1, medium: 2, low: 3 };
-      const s = sevOrder[a.severity] - sevOrder[b.severity];
-      if (s !== 0) return s;
-      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      const o = { critical: 0, high: 1, medium: 2, low: 3 };
+      return (o[a.severity] - o[b.severity]) ||
+             (new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     })[0];
 
-  if (!top) return (
-    <div className="nba-banner nba-banner-ok" style={{ justifyContent: 'center' }}>
-      <span style={{ fontSize: '0.8125rem', color: 'var(--ok)', fontWeight: 500 }}>
-        ✓ No active high-priority incidents
-      </span>
-    </div>
-  );
-
-  const isCrit = top.severity === 'critical' || top.severity === 'high';
+  if (!top || dismissed === top.id) return null;
 
   return (
-    <div
-      className="nba-banner"
-      style={isCrit ? {} : { background: 'var(--warn-subtle)', borderBottomColor: 'var(--warn-border)' }}
-    >
-      <AlertOctagon
-        size={15}
-        style={{ color: isCrit ? 'var(--danger)' : 'var(--warn)', flexShrink: 0 }}
-        strokeWidth={2}
-      />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text)' }}>
-          Next best action:{' '}
-        </span>
-        <span style={{ fontSize: '0.8125rem', color: 'var(--text-2)' }}>
-          <button
-            onClick={() => selectIncident(top.id)}
-            style={{
-              background: 'none', border: 'none', padding: 0,
-              cursor: 'pointer', textDecoration: 'underline',
-              color: isCrit ? 'var(--danger)' : 'var(--warn)',
-              fontWeight: 600, fontSize: 'inherit',
-            }}
-          >
+    <div className="nba-banner" style={top.severity === 'high' ? { background: 'var(--sev-high-tint)', borderBottomColor: 'var(--sev-high-border)' } : {}}>
+      <AlertOctagon size={14} style={{ color: top.severity === 'critical' ? 'var(--sev-critical-text)' : 'var(--sev-high-text)', flexShrink: 0 }} strokeWidth={2} />
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>
+          <button onClick={() => selectIncident(top.id)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontWeight: 600, fontSize: 13, color: top.severity === 'critical' ? 'var(--sev-critical-text)' : 'var(--sev-high-text)', textDecoration: 'underline', textDecorationStyle: 'dotted' }}>
             {incidentTypeLabel(top.type)}
           </button>
-          {' '}at {top.locationLabel}
-          <span style={{
-            display: 'inline-block',
-            width: 8, height: 8, borderRadius: '50%',
-            background: severityColor(top.severity),
-            marginLeft: 6, marginBottom: -1,
-          }} />
+          {' '}— {top.locationLabel}
         </span>
       </div>
       {(top.status === 'new' || top.status === 'under_review') && (
         <button
           className="btn btn-sm"
-          style={{
-            background: isCrit ? 'var(--danger)' : 'var(--warn)',
-            color: 'var(--text-invert)',
-            border: 'none',
-            fontWeight: 600,
-            flexShrink: 0,
-          }}
+          style={{ background: top.severity === 'critical' ? 'var(--sev-critical-text)' : 'var(--sev-high-text)', color: '#fff', border: 'none', fontWeight: 600, flexShrink: 0, padding: '4px 12px' }}
           onClick={() => {
-            const nextStatus = top.status === 'new' ? 'under_review' : 'dispatched';
-            const action     = top.status === 'new' ? 'Acknowledged' : 'Crew dispatched';
-            updateIncidentStatus(top.id, nextStatus, action);
-            addToast({
-              type: 'success',
-              title: top.status === 'new' ? 'Incident acknowledged' : '🚜 Crew dispatched',
-              message: `${top.id} — ${top.locationLabel}`,
-            });
+            const next = top.status === 'new' ? 'under_review' : 'dispatched';
+            updateIncidentStatus(top.id, next, top.status === 'new' ? 'Acknowledged' : 'Crew dispatched');
+            addToast({ type: 'success', title: top.status === 'new' ? 'Acknowledged' : 'Crew dispatched', message: top.locationLabel });
           }}
         >
           <Wrench size={12} />
-          {top.status === 'new' ? 'Acknowledge' : 'Dispatch Crew'}
+          {top.status === 'new' ? 'Acknowledge' : 'Dispatch'}
         </button>
       )}
+      <button className="btn btn-ghost btn-icon btn-xs" onClick={() => setDismissed(top.id)} style={{ flexShrink: 0, color: 'var(--muted)' }}>
+        <X size={12} />
+      </button>
     </div>
   );
 }
@@ -209,182 +211,124 @@ function NextBestActionBanner() {
 // ── Root App ───────────────────────────────────────────────
 export default function App() {
   const view                = useNavikStore((s) => s.view);
+  const setView             = useNavikStore((s) => s.setView);
   const drawerOpen          = useNavikStore((s) => s.drawerOpen);
   const activeLiveFeedBusId = useNavikStore((s) => s.activeLiveFeedBusId);
-  const incidents           = useNavikStore((s) => s.incidents);
-  const kpis                = useNavikStore((s) => s.kpis);
+  const closeDrawer         = useNavikStore((s) => s.closeDrawer);
   const [railCollapsed, setRailCollapsed] = useState(false);
 
   const { theme, toggleTheme, present, togglePresent } = useTheme();
 
   useSimulation();
 
+  // Close drawer when view changes (bug fix)
+  useEffect(() => { closeDrawer(); }, [view]);           // eslint-disable-line react-hooks/exhaustive-deps
+
   // Escape closes drawer & live feed
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
+    const h = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         useNavikStore.getState().closeDrawer();
         useNavikStore.getState().closeLiveFeed();
       }
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
   }, []);
 
   const railWidth = railCollapsed ? 60 : 220;
   const isMapView = MAP_VIEWS.includes(view);
-  const newCount  = incidents.filter((i) => i.status === 'new').length;
+
+  // Wrap setView to also dismiss drawer
+  function navigateTo(v: AppView) {
+    closeDrawer();
+    setView(v);
+  }
+  void navigateTo; // used via LeftRail's own setView — drawer closes via useEffect above
 
   return (
-    <div style={{
-      display: 'flex',
-      height: '100vh',
-      width: '100vw',
-      overflow: 'hidden',
-      background: 'var(--bg)',
-    }}>
-      {/* Left rail */}
+    <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', background: 'var(--canvas)' }}>
       <LeftRail collapsed={railCollapsed} onToggleCollapse={setRailCollapsed} />
 
-      {/* Main area */}
       <div style={{
-        marginLeft: railWidth,
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        minWidth: 0,
-        height: '100vh',
-        overflow: 'hidden',
-        transition: 'margin-left 0.22s cubic-bezier(0.4,0,0.2,1)',
+        marginLeft: railWidth, flex: 1, display: 'flex', flexDirection: 'column',
+        minWidth: 0, height: '100vh', overflow: 'hidden',
+        transition: 'margin-left 0.2s ease',
       }}>
-
-        {/* Top bar */}
+        {/* ── Top bar ── */}
         <header style={{
-          height: 56,
-          flexShrink: 0,
+          height: 52, flexShrink: 0,
           background: 'var(--surface)',
           borderBottom: '1px solid var(--border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 20px',
-          gap: 16,
-          zIndex: 50,
-          boxShadow: 'var(--shadow-sm)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0 20px', gap: 16, zIndex: 50,
         }}>
-          {/* Left */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-            <button
-              className="btn btn-ghost btn-icon btn-sm"
-              onClick={() => setRailCollapsed(!railCollapsed)}
-              aria-label="Toggle navigation"
-              style={{ flexShrink: 0, color: 'var(--text-muted)' }}
-            >
+          {/* Left: hamburger + title */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setRailCollapsed(!railCollapsed)}
+              aria-label="Toggle navigation" style={{ flexShrink: 0, color: 'var(--muted)' }}>
               <Menu size={16} />
             </button>
-            <h1 style={{
-              fontSize: '0.9375rem',
-              fontWeight: 700,
-              color: 'var(--text)',
-              letterSpacing: '-0.02em',
-              whiteSpace: 'nowrap',
-            }}>
+            <h1 style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>
               {VIEW_META[view].title}
             </h1>
           </div>
 
-          {/* Right */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
-            {/* Mini KPI pills */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <TopBarKPI label="Buses"     value={kpis.activeBuses}          color="var(--ok)"     />
-              <TopBarKPI label="Incidents" value={kpis.liveIncidents}        color="var(--danger)" badge={newCount > 0 ? newCount : undefined} />
-              <TopBarKPI label="Delay"     value={`${kpis.avgRouteDelay}m`}  color="var(--warn)"   />
-              <TopBarKPI label="Saved"     value={`${kpis.bandwidthSavedGB}GB`} color="var(--accent)" />
-            </div>
-
-            <div style={{ width: 1, height: 24, background: 'var(--border)', flexShrink: 0 }} />
-
-            {/* City tag */}
+          {/* Right: live + clock + tools */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+            {/* Simulated data pill */}
             <span style={{
-              padding: '3px 10px',
-              borderRadius: 6,
-              background: 'var(--surface-2)',
-              border: '1px solid var(--border)',
-              fontSize: '0.6875rem',
-              color: 'var(--text-muted)',
-              fontWeight: 500,
-              flexShrink: 0,
+              display: 'flex', alignItems: 'center', gap: 4,
+              padding: '3px 9px', borderRadius: 99,
+              background: 'var(--surface-2)', border: '1px solid var(--border)',
+              fontSize: 12, color: 'var(--muted)', fontWeight: 400,
+              marginRight: 8, flexShrink: 0,
             }}>
-              Hyderabad, TS
+              <Database size={11} style={{ opacity: 0.6 }} />
+              Simulated data
             </span>
 
-            {/* Live */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            {/* Live pulse + clock */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginRight: 8 }}>
               <span className="live-dot" />
-              <span style={{
-                fontSize: '0.6875rem',
-                fontWeight: 700,
-                color: 'var(--ok)',
-                letterSpacing: '0.04em',
-                fontFamily: 'var(--font-mono)',
-              }}>
-                Live
-              </span>
+              <LiveClock />
             </div>
 
-            <LiveClock />
+            <div style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 4px' }} />
 
-            <div style={{ width: 1, height: 24, background: 'var(--border)', flexShrink: 0 }} />
+            <NotificationBell />
 
-            {/* Present mode */}
-            <button
-              className="btn btn-ghost btn-icon btn-sm"
-              onClick={togglePresent}
-              title={present ? 'Exit present mode' : 'Present mode (larger text)'}
+            <button className="btn btn-ghost btn-icon btn-sm" onClick={togglePresent}
+              title={present ? 'Exit present mode' : 'Present mode'}
               aria-pressed={present}
-              style={{ color: present ? 'var(--accent)' : 'var(--text-muted)' }}
-            >
-              <Maximize2 size={15} />
+              style={{ color: present ? 'var(--accent)' : 'var(--muted)' }}>
+              <Maximize2 size={14} />
             </button>
 
-            {/* Theme toggle */}
-            <button
-              className="btn btn-ghost btn-icon btn-sm"
-              onClick={toggleTheme}
-              aria-label={theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'}
-              style={{ color: 'var(--text-muted)' }}
-            >
-              {theme === 'light'
-                ? <Moon size={15} />
-                : <Sun  size={15} />
-              }
+            <button className="btn btn-ghost btn-icon btn-sm" onClick={toggleTheme}
+              aria-label={theme === 'light' ? 'Dark theme' : 'Light theme'}
+              style={{ color: 'var(--muted)' }}>
+              {theme === 'light' ? <Moon size={14} /> : <Sun size={14} />}
             </button>
           </div>
         </header>
 
-        {/* NBA banner — only on dashboard */}
-        {view === 'dashboard' && <NextBestActionBanner />}
+        {/* NBA banner — dashboard only */}
+        {view === 'dashboard' && <NBABanner />}
 
         {/* Content */}
         <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden', position: 'relative' }}>
-
+          {/* Map view */}
           {isMapView && (
             <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
-              {/* KPI strip docked above map */}
               {view === 'dashboard' && (
-                <div style={{
-                  position: 'absolute',
-                  top: 0, left: 0, right: 0,
-                  zIndex: 300,
-                  pointerEvents: 'none',
-                }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 300, pointerEvents: 'none' }}>
                   <KPIStrip />
                 </div>
               )}
               <div style={{
                 position: 'absolute',
-                top: view === 'dashboard' ? 104 : 0,
+                top: view === 'dashboard' ? 88 : 0,
                 left: 0, right: 0, bottom: 0,
               }}>
                 <GISMap />
@@ -392,31 +336,35 @@ export default function App() {
             </div>
           )}
 
+          {/* Feature views */}
           {!isMapView && (
-            <div style={{
-              flex: 1, overflow: 'hidden',
-              display: 'flex', flexDirection: 'column', minWidth: 0,
-            }}>
+            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
               <FeatureContent view={view} />
             </div>
           )}
 
-          {/* Right drawer */}
-          {drawerOpen && (
-            <div style={{
-              width: 420,
-              flexShrink: 0,
-              background: 'var(--surface)',
-              borderLeft: '1px solid var(--border)',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '-4px 0 20px rgba(0,0,0,0.08)',
-              zIndex: 200,
-              overflow: 'hidden',
-            }}>
-              <DetailDrawer />
-            </div>
-          )}
+          {/* Right drawer — slide in, shadow only on drawer */}
+          <AnimatePresence>
+            {drawerOpen && (
+              <motion.div
+                key="drawer"
+                initial={{ x: 30, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 30, opacity: 0 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
+                style={{
+                  width: 400, flexShrink: 0,
+                  background: 'var(--surface)',
+                  borderLeft: '1px solid var(--border)',
+                  display: 'flex', flexDirection: 'column',
+                  boxShadow: 'var(--shadow-drawer)',
+                  zIndex: 200, overflow: 'hidden',
+                }}
+              >
+                <DetailDrawer />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
