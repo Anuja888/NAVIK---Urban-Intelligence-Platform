@@ -3,6 +3,7 @@ import {
   LayoutDashboard, Bus, AlertTriangle, Bot,
   HardHat, Activity, Cpu, BarChart3,
   FileText, Radio, Zap, ChevronLeft, ChevronRight,
+  FlaskConical,
 } from 'lucide-react';
 import { useNavikStore } from '../../store/navikStore';
 import type { AppView } from '../../types';
@@ -27,6 +28,7 @@ const NAV_ITEMS: NavItem[] = [
   { view: 'civil_works',  icon: HardHat,         label: 'Civil Works',    group: 'intelligence' },
   { view: 'road_health',  icon: Activity,        label: 'Road Health',    group: 'intelligence' },
   { view: 'edge_network', icon: Cpu,             label: 'Edge Network',   group: 'intelligence' },
+  { view: 'ai_lab',       icon: FlaskConical,    label: 'AI Lab',         group: 'intelligence' },
   { view: 'analytics',    icon: BarChart3,       label: 'Analytics',      group: 'analytics' },
   { view: 'reports',      icon: FileText,        label: 'Reports',        group: 'analytics' },
   { view: 'live_feed',    icon: Radio,           label: 'Live Feed',      group: 'analytics' },

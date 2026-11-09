@@ -121,17 +121,26 @@ export function LiveFeedPanel() {
   }, [busId]);
 
   // Recompute detections when camera or frameSlot changes — NOT on every render
+  // Cabin camera has no road view — no vehicle/defect detections
   useEffect(() => {
     if (!busId) return;
-    detections.current = genDetections(busId, activeCam, frameSlot);
+    if (activeCam === 'Cabin') {
+      detections.current = []; // cabin faces driver, no road detections
+    } else {
+      detections.current = genDetections(busId, activeCam, frameSlot);
+    }
     setTick((t) => t + 1);
   }, [busId, activeCam, frameSlot]);
 
   const handleCamChange = useCallback((label: string) => {
     setActiveCam(label);
-    // Immediately show new camera's detections
+    // Immediately show new camera's detections (or clear for Cabin)
     if (busId) {
-      detections.current = genDetections(busId, label, frameSlot);
+      if (label === 'Cabin') {
+        detections.current = [];
+      } else {
+        detections.current = genDetections(busId, label, frameSlot);
+      }
       setTick((t) => t + 1);
     }
   }, [busId, frameSlot]);

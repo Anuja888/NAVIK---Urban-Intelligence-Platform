@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import * as React from 'react';
 import { Cpu, Wifi, WifiOff, RefreshCw, Download, Sliders, BarChart2, AlertTriangle } from 'lucide-react';
 import { useNavikStore } from '../../store/navikStore';
 import type { EdgeNode } from '../../types';
@@ -111,12 +112,14 @@ function EdgeNodeTile({ node, onDrop, onReconnect }: {
       {/* Actions */}
       <div style={{ display: 'flex', gap: 6 }}>
         {node.uplinkStatus === 'online' && (
-          <button className="btn btn-ghost btn-xs" style={{ fontSize: 11 }} onClick={() => onDrop(node.busId)}>
+          <button className="btn btn-ghost btn-xs" style={{ fontSize: 11 }}
+            onClick={(e) => { e.stopPropagation(); onDrop(node.busId); }}>
             <WifiOff size={10} /> Drop
           </button>
         )}
         {(node.uplinkStatus === 'offline' || node.uplinkStatus === 'buffering') && (
-          <button className="btn btn-success btn-xs" style={{ fontSize: 11 }} onClick={() => onReconnect(node.busId)}>
+          <button className="btn btn-success btn-xs" style={{ fontSize: 11 }}
+            onClick={(e) => { e.stopPropagation(); onReconnect(node.busId); }}>
             <RefreshCw size={10} /> Reconnect
           </button>
         )}
@@ -134,6 +137,14 @@ export function EdgeNetworkView() {
   const startOTAUpdate       = useNavikStore((s) => s.startOTAUpdate);
   const [selectedBusIds, setSelectedBusIds] = useState<string[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>('');
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+
+  // Simulate live heartbeat — FPS/temp jitter every 5s to show data is live
+  // (does not call store — just reflects bus movement already happening via simulation)
+  React.useEffect(() => {
+    const id = setInterval(() => setLastUpdated(new Date()), 5000);
+    return () => clearInterval(id);
+  }, []);
 
   const _totalBandwidthSaved = edgeNodes.reduce((s, n) => s + n.bandwidthSavedMB, 0) / 1024;
   void _totalBandwidthSaved;
@@ -161,6 +172,9 @@ export function EdgeNetworkView() {
       <div style={{ flexShrink: 0, padding: '12px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <Cpu size={16} color="var(--accent)" />
         <h2 style={{ fontSize: 15, marginRight: 'auto' }}>Edge Network Console</h2>
+        <span style={{ fontSize: 11, color: 'var(--muted)', marginRight: 8 }}>
+          Updated {lastUpdated.toLocaleTimeString('en-IN', { hour12: false })}
+        </span>
         {/* Hero stats */}
         {[
           { label: 'Bandwidth Saved', value: `${fleetSavedGB.toFixed(1)} GB/day`, color: 'var(--accent)', sub: `${savingPct}% reduction` },

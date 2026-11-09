@@ -14,6 +14,7 @@ import { AgentsView }     from './features/agents/AgentsView';
 import { CivilWorksView } from './features/civil/CivilWorksView';
 import { RoadHealthView } from './features/roadhealth/RoadHealthView';
 import { EdgeNetworkView }from './features/edge/EdgeNetworkView';
+import { AILabView }      from './features/ailab/AILabView';
 import { ToastContainer } from './components/ui/Toast';
 import { useSimulation }  from './hooks/useSimulation';
 import { useTheme }       from './hooks/useTheme';
@@ -140,6 +141,7 @@ const VIEW_META: Record<AppView, { title: string }> = {
   analytics:    { title: 'Traffic Analytics' },
   reports:      { title: 'Reports' },
   live_feed:    { title: 'Live Onboard Feed' },
+  ai_lab:       { title: 'AI Lab — Real Inference' },
 };
 
 const MAP_VIEWS: AppView[] = ['dashboard', 'live_feed'];
@@ -154,6 +156,7 @@ function FeatureContent({ view }: { view: AppView }) {
     case 'edge_network': return <EdgeNetworkView />;
     case 'analytics':    return <AnalyticsView />;
     case 'reports':      return <ReportsView />;
+    case 'ai_lab':       return <AILabView />;
     default:             return null;
   }
 }
@@ -177,7 +180,17 @@ function NBABanner() {
   if (!top || dismissed === top.id) return null;
 
   return (
-    <div className="nba-banner" style={top.severity === 'high' ? { background: 'var(--sev-high-tint)', borderBottomColor: 'var(--sev-high-border)' } : {}}>
+    <div
+      className="nba-banner"
+      style={{
+        flex: '0 0 auto',
+        position: 'relative',
+        zIndex: 20,
+        ...(top.severity === 'high'
+          ? { background: 'var(--sev-high-tint)', borderBottomColor: 'var(--sev-high-border)' }
+          : {}),
+      }}
+    >
       <AlertOctagon size={14} style={{ color: top.severity === 'critical' ? 'var(--sev-critical-text)' : 'var(--sev-high-text)', flexShrink: 0 }} strokeWidth={2} />
       <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>
@@ -317,26 +330,57 @@ export default function App() {
         {view === 'dashboard' && <NBABanner />}
 
         {/* Content */}
-        <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden', position: 'relative' }}>
-          {/* Map view */}
+        {/* IMPORTANT: This flex container must NOT be position:relative with absolute children
+            when feature views are shown — that causes map to bleed through */}
+        <div style={{ flex: '1 1 0%', display: 'flex', minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
+          {/* Map view — only rendered when isMapView is true */}
           {isMapView && (
-            <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
+            <div
+              style={{
+                flex: '1 1 0%',
+                display: 'flex',
+                flexDirection: 'column',
+                minWidth: 0,
+                minHeight: 0,
+                overflow: 'hidden',
+              }}
+            >
+              {/* Reserve a predictable, non-shrinking row for the KPI strip. */}
               {view === 'dashboard' && (
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 300, pointerEvents: 'none' }}>
+                <div
+                  style={{
+                    flex: '0 0 106px',
+                    height: 106,
+                    minHeight: 106,
+                    boxSizing: 'border-box',
+                    position: 'relative',
+                    zIndex: 2,
+                    isolation: 'isolate',
+                    background: 'var(--surface)',
+                    overflow: 'hidden',
+                  }}
+                >
                   <KPIStrip />
                 </div>
               )}
-              <div style={{
-                position: 'absolute',
-                top: view === 'dashboard' ? 88 : 0,
-                left: 0, right: 0, bottom: 0,
-              }}>
+
+              {/* The map occupies only the space left below the KPI row. */}
+              <div
+                style={{
+                  flex: '1 1 0%',
+                  minHeight: 0,
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  position: 'relative',
+                  isolation: 'isolate',
+                }}
+              >
                 <GISMap />
               </div>
             </div>
           )}
 
-          {/* Feature views */}
+          {/* Feature views — completely separate from map, no z-index conflict */}
           {!isMapView && (
             <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
               <FeatureContent view={view} />

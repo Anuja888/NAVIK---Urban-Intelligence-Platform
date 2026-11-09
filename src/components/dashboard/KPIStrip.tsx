@@ -136,11 +136,12 @@ export function KPIStrip() {
 
   return (
     <div style={{
-      padding: '12px 12px 0',
+      padding: '10px 12px',
       display: 'flex',
       flexDirection: 'column',
       gap: 8,
-      // DO NOT overlap map — this is a docked strip, map starts below
+      background: 'var(--surface)',
+      borderBottom: '1px solid var(--border)',
     }}>
       {/* 4 KPI tiles row */}
       <div style={{ display: 'flex', gap: 8 }}>
@@ -158,7 +159,7 @@ export function KPIStrip() {
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          maxHeight: 220,
+          maxHeight: 160,
         }}>
           <div style={{ padding: '9px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
             <span className="live-dot" />

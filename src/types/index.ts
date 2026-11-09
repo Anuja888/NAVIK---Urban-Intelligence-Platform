@@ -352,7 +352,7 @@ export type MapMode = 'standard' | 'od_flow' | 'road_health';
 export type AppView =
   | 'dashboard' | 'fleet' | 'incidents' | 'agents'
   | 'civil_works' | 'road_health' | 'edge_network'
-  | 'analytics' | 'reports' | 'live_feed';
+  | 'analytics' | 'reports' | 'live_feed' | 'ai_lab';
 
 export interface LiveFeedDetection {
   id: string; category: string; confidence: number;
