@@ -1,0 +1,152 @@
+// ── Vision Analysis ───────────────────────────────────────
+function VisionPanel() {
+  const [textDesc, setTextDesc] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState('');
+  const [error, setError] = useState('');
+  const [imageB64, setImageB64] = useState<string | null>(null);
+  const [imageMime, setImageMime] = useState('image/jpeg');
+  const [elapsed, setElapsed] = useState(0);
+  const [useTextMode, setUseTextMode] = useState(true);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { check } = useAI();
+
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setImageMime(f.type || 'image/jpeg');
+    const reader = new FileReader();
+    reader.onload = () => { setImageB64((reader.result as string).split(',')[1]); setResult(''); setError(''); };
+    reader.readAsDataURL(f);
+  }
+
+  async function runTextAnalysis() {
+    if (!textDesc.trim()) return;
+    setLoading(true); setError(''); setResult('');
+    try {
+      const { generate, MODELS } = await import('../../lib/ollamaClient');
+      const r = await generate(
+        `You are an urban road defect AI for TGSRTC Hyderabad.\nA bus camera observed:\n\n"${textDesc}"\n\nAnalyse and provide:\n1. Defect type\n2. Severity (critical/high/medium/low) with justification\n3. Recommended GHMC action\n4. IRC:82 reference if applicable\n5. Priority score 0-100`,
+        { model: MODELS.reasoning, maxTokens: 400, timeoutMs: 45000 }
+      );
+      setResult(r);
+    } catch (e) { setError(String(e)); }
+    finally { setLoading(false); }
+  }
+
+  async function runVision() {
+    if (!imageB64) return;
+    setLoading(true); setError(''); setResult(''); setElapsed(0);
+    timerRef.current = setInterval(() => setElapsed((s) => s + 1), 1000);
+    try {
+      const r = await analyzeImage(
+        imageB64,
+        'Identify road defects, potholes, waterlogging, missing signboards or traffic violations. List each with severity.',
+        { maxTokens: 400, timeoutMs: 600000 }
+      );
+      setResult(r);
+    } catch {
+      setError('qwen2.5vl:7b needs a GPU. On CPU it crashes after several minutes. Switch to Text Analysis mode above.');
+      setTimeout(() => check(), 2000);
+    } finally {
+      setLoading(false);
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    }
+  }
+
+  return (
+    <div>
+      {/* Mode toggle */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        <button
+          className={'btn btn-sm ' + (useTextMode ? 'btn-primary' : 'btn-secondary')}
+          onClick={() => setUseTextMode(true)}
+        >
+          ✍ Text Analysis — llama3.2:3b (works now)
+        </button>
+        <button
+          className={'btn btn-sm ' + (!useTextMode ? 'btn-primary' : 'btn-secondary')}
+          onClick={() => setUseTextMode(false)}
+        >
+          📷 Vision — qwen2.5vl:7b (needs GPU)
+        </button>
+      </div>
+
+      {/* TEXT MODE */}
+      {useTextMode && (
+        <div>
+          <div style={{ marginBottom: 10, padding: '10px 12px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--ink-2)' }}>
+            <strong style={{ color: 'var(--ink)' }}>llama3.2:3b</strong> — describe what the camera sees in text. Get instant AI defect classification, severity, GHMC action and IRC reference.
+          </div>
+          <label className="form-label">Describe the road scene observed by the camera</label>
+          <textarea
+            className="form-textarea"
+            value={textDesc}
+            onChange={(e) => setTextDesc(e.target.value)}
+            placeholder={'Examples:\n- Large pothole ~40cm wide, centre of carriageway near Ameerpet X-roads\n- Waterlogging 200mm deep blocking left lane near LB Nagar underpass\n- Speed limit signboard missing near school gate, Begumpet\n- Road divider gap 20m, arterial road near Secunderabad'}
+            style={{ fontSize: 13, minHeight: 110 }}
+          />
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={runTextAnalysis}
+            disabled={loading || !textDesc.trim()}
+            style={{ marginTop: 10 }}
+          >
+            {loading
+              ? <><Loader size={12} style={{ animation: 'spin 1s linear infinite' } as React.CSSProperties} /> Analysing…</>
+              : <><Zap size={12} /> Analyse with llama3.2:3b</>}
+          </button>
+        </div>
+      )}
+
+      {/* IMAGE/VISION MODE */}
+      {!useTextMode && (
+        <div>
+          <div style={{ marginBottom: 10, padding: '10px 12px', background: '#A1620712', border: '1px solid #A1620728', borderRadius: 8, fontSize: 13, color: '#A16207' }}>
+            ⚠ <strong>qwen2.5vl:7b requires a GPU.</strong> On CPU it takes 10+ min and may crash Ollama.
+            For a working demo, use Text Analysis mode.
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <button className="btn btn-secondary btn-sm" onClick={() => fileRef.current?.click()}><Upload size={12} /> Upload Image</button>
+            {imageB64 && <button className="btn btn-ghost btn-sm" onClick={() => { setImageB64(null); setResult(''); setError(''); }}><X size={12} /> Clear</button>}
+          </div>
+          {imageB64 && (
+            <img src={'data:' + imageMime + ';base64,' + imageB64} alt="uploaded"
+              style={{ maxHeight: 160, maxWidth: '100%', borderRadius: 8, border: '1px solid var(--border)', display: 'block', marginBottom: 10 }} />
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button className="btn btn-secondary btn-sm" onClick={runVision} disabled={loading || !imageB64}>
+              {loading
+                ? <><Loader size={12} style={{ animation: 'spin 1s linear infinite' } as React.CSSProperties} /> Running… ({elapsed}s)</>
+                : <><Cpu size={12} /> Try Vision (GPU needed)</>}
+            </button>
+            {loading && <span style={{ fontSize: 12, color: 'var(--muted)' }}>Loading 8.3B params on CPU…</span>}
+          </div>
+          {loading && (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ height: 4, background: 'var(--surface-3)', borderRadius: 99, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: String(Math.min(90, elapsed / 6)) + '%', background: '#A16207', borderRadius: 99, transition: 'width 1s linear' }} />
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>{elapsed}s elapsed</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {error && (
+        <div style={{ marginTop: 10, padding: '10px 12px', background: '#B4231810', border: '1px solid #B4231828', borderRadius: 8, fontSize: 13, color: '#B42318' }}>
+          {error}
+        </div>
+      )}
+
+      {result && (
+        <ResultBox label={useTextMode ? 'llama3.2:3b defect analysis' : 'qwen2.5vl:7b vision output'}>
+          <pre style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--ink)', lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{result}</pre>
+        </ResultBox>
+      )}
+    </div>
+  );
+}
+
